@@ -7,10 +7,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
-  StatusBar, // Đã thay thế từ 'expo-status-bar' sang React Native
+  StatusBar,
+  Image,
 } from 'react-native';
 
 import { Ionicons } from '@react-native-vector-icons/ionicons';
+import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
@@ -120,6 +122,8 @@ const CalendarSection = () => {
 // Component chính
 const HomeScreen = () => {
   const [activeBottomTab, setActiveBottomTab] = useState('home');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const navigation = useNavigation();
 
   // Dữ liệu cho các Quick Actions
   const quickActions = [
@@ -138,10 +142,36 @@ const HomeScreen = () => {
         {/* HEADER */}
         <View style={styles.headerContainer}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={styles.profileImagePlaceholder} />
+            {isLoggedIn ? (
+              <Image
+                source={{ uri: 'https://i.pravatar.cc/100' }} // Avatar user thật
+                style={styles.profileImage}
+              />
+            ) : (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Login')}
+              >
+                <Ionicons
+                  name="person-circle-outline"
+                  size={40}
+                  color="#1250dc"
+                />
+              </TouchableOpacity>
+            )}
+
             <View style={{ marginLeft: 10 }}>
-              <Text style={styles.welcomeText}>Hi., WelcomeBack</Text>
-              <Text style={styles.userName}>John Doe</Text>
+              {isLoggedIn ? (
+                <>
+                  <Text style={styles.welcomeText}>Hi., Welcome Back</Text>
+                  <Text style={styles.userName}>John Doe</Text>
+                </>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('Login')}
+                >
+                  <Text style={styles.loginPrompt}>Đăng nhập ngay</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
@@ -510,4 +540,14 @@ const styles = StyleSheet.create({
   activeIcon: { fontSize: 30, color: '#3b5998' },
   bottomNavLabel: { fontSize: 12, color: '#a6a6a6', marginTop: 4 }, // Màu mặc định cho label
   activeLabel: { color: '#1250dc', fontWeight: 'bold' }, // Màu active cho label
+  loginPrompt: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1250dc',
+  },
+  profileImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
 });
