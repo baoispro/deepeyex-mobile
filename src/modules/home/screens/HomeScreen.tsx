@@ -127,10 +127,20 @@ const HomeScreen = () => {
 
   // Dữ liệu cho các Quick Actions
   const quickActions = [
-    { name: 'AI Chẩn đoán', icon: '👁️', color: '#80a6feff' }, // Chẩn đoán bệnh mắt
+    {
+      name: 'AI Chẩn đoán',
+      icon: '👁️',
+      color: '#80a6feff',
+      onPress: () => navigation.navigate('EyeDiagnosis'),
+    }, // Chẩn đoán bệnh mắt
     { name: 'Tư vấn Bác sĩ', icon: '👨‍⚕️', color: '#80a6feff' }, // Tư vấn trực tiếp online
     { name: 'Đặt khám', icon: '📅', color: '#80a6feff' },
-    { name: 'Thuốc', icon: '💊', color: '#80a6feff' },
+    {
+      name: 'Thuốc',
+      icon: '💊',
+      color: '#80a6feff',
+      onPress: () => navigation.navigate('MedicineList'),
+    },
   ];
 
   return (
@@ -148,9 +158,7 @@ const HomeScreen = () => {
                 style={styles.profileImage}
               />
             ) : (
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Login')}
-              >
+              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
                 <Ionicons
                   name="person-circle-outline"
                   size={40}
@@ -166,9 +174,7 @@ const HomeScreen = () => {
                   <Text style={styles.userName}>John Doe</Text>
                 </>
               ) : (
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('Login')}
-                >
+                <TouchableOpacity onPress={() => navigation.navigate('Login')}>
                   <Text style={styles.loginPrompt}>Đăng nhập ngay</Text>
                 </TouchableOpacity>
               )}
@@ -208,6 +214,7 @@ const HomeScreen = () => {
               <TouchableOpacity
                 key={index}
                 style={[styles.quickAction, { backgroundColor: action.color }]}
+                onPress={action.onPress}
               >
                 <Text style={styles.quickActionIcon}>{action.icon}</Text>
                 <Text style={styles.quickActionText}>{action.name}</Text>

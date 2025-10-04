@@ -9,6 +9,8 @@ import SignUpScreen from '../modules/auth/screens/SignUpScreen';
 import ForgotPasswordScreen from '../modules/auth/screens/ForgotPasswordScreen';
 import ResetPasswordScreen from '../modules/auth/screens/ResetPasswordScreen';
 import CompleteProfileScreen from '../modules/auth/screens/CompleteProfileScreen';
+import MedicineListScreen from '../modules/home/screens/MedicineListScreen';
+import EyeDiagnosisScreen from '../modules/home/screens/EyeDiagnosisScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -24,7 +26,16 @@ const AppNavigator = () => {
         <Stack.Screen name="SignUp" component={SignUpScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-        <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
+        <Stack.Screen
+          name="CompleteProfile"
+          component={CompleteProfileScreen}
+        />
+        <Stack.Screen name="MedicineList" component={MedicineListScreen} />
+        <Stack.Screen
+          name="EyeDiagnosis"
+          component={EyeDiagnosisScreen}
+          options={{ headerShown: false }}
+        />
         <Stack.Screen name="Home" component={HomeScreen} />
       </Stack.Navigator>
     </NavigationContainer>
