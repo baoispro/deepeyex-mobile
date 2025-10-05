@@ -139,7 +139,12 @@ const HomeScreen = () => {
       onPress: () => navigation.navigate('EyeDiagnosis'),
     }, // Chẩn đoán bệnh mắt
     { name: 'Tư vấn Bác sĩ', icon: '👨‍⚕️', color: '#80a6feff' }, // Tư vấn trực tiếp online
-    { name: 'Đặt khám', icon: '📅', color: '#80a6feff' },
+    {
+      name: 'Đặt khám',
+      icon: '📅',
+      color: '#80a6feff',
+      onPress: () => navigation.navigate('BookAppointment'),
+    },
     {
       name: 'Thuốc',
       icon: '💊',
