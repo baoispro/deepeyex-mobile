@@ -6,10 +6,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { FontAwesome6 } from '@react-native-vector-icons/fontawesome6';
+import { useLoginMutation } from '../hooks/mutations/use-login.mutation';
+import { PatientApi } from '../../hospital/apis/patient/patientApi';
+import { useDispatch } from 'react-redux';
+import { setPatient } from '../../../shared/stores/authSlice';
 
 interface LoginScreenProps {
   navigation: any;
@@ -24,6 +29,7 @@ const Colors = {
 };
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
+  const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
   const [emailOrMobile, setEmailOrMobile] = useState('');
   const [password, setPassword] = useState('');
@@ -31,9 +37,43 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [isFocusedEmail, setIsFocusedEmail] = useState(false);
   const [isFocusedPassword, setIsFocusedPassword] = useState(false);
 
+  const { mutate: login, isPending } = useLoginMutation({
+    onSuccess: async data => {
+      Alert.alert('✅ Login Successful', `Welcome ${data.data?.user_id}`);
+      try {
+        const patient = await PatientApi.getByUserID(data.data?.user_id || '');
+        // Map GetPatientResponse to PatientInfo
+        const patientInfo = {
+          patientId: patient.data?.patient_id ?? null,
+          fullName: patient.data?.full_name ?? null,
+          dob: patient.data?.dob ?? null,
+          gender: patient.data?.gender ?? null,
+          phone: patient.data?.phone ?? null,
+          address: patient.data?.address ?? null,
+          email: patient.data?.email ?? null,
+          image: patient.data?.image ?? null,
+        };
+        dispatch(setPatient(patientInfo));
+        navigation.navigate('Home' as never);
+      } catch (err) {
+        navigation.navigate('CompleteProfile' as never);
+      }
+    },
+    onError: err => {
+      Alert.alert(
+        '❌ Login Failed',
+        err.response?.data?.message || 'Unexpected error',
+      );
+    },
+  });
+
   const handleLogin = () => {
-    Alert.alert('Đăng nhập', `Đang cố gắng đăng nhập với: ${emailOrMobile}`);
-    // navigation.navigate("Home");
+    if (!emailOrMobile || !password) {
+      Alert.alert('⚠️ Missing Info', 'Please enter both username and password');
+      return;
+    }
+
+    login({ username: emailOrMobile, password });
   };
 
   const handleSocialLogin = (
@@ -68,7 +108,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         </Text>
       </View>
 
-      {/* Email */}
+      {/* Username */}
       <Text style={styles.inputLabel}>Username</Text>
       <TextInput
         style={[styles.input, isFocusedEmail && styles.inputFocused]}
@@ -76,7 +116,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         placeholderTextColor={Colors.textGray}
         value={emailOrMobile}
         onChangeText={setEmailOrMobile}
-        keyboardType="email-address"
         autoCapitalize="none"
         onFocus={() => setIsFocusedEmail(true)}
         onBlur={() => setIsFocusedEmail(false)}
@@ -93,7 +132,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         <TextInput
           style={styles.passwordInput}
           secureTextEntry={!showPassword}
-          placeholder="***********"
+          placeholder="Enter your password"
           placeholderTextColor={Colors.textGray}
           value={password}
           onChangeText={setPassword}
@@ -122,11 +161,15 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
       {/* Login button */}
       <TouchableOpacity
-        style={styles.loginButton}
+        style={[styles.loginButton, isPending && { opacity: 0.6 }]}
         onPress={handleLogin}
-        disabled={!emailOrMobile || !password}
+        disabled={!emailOrMobile || !password || isPending}
       >
-        <Text style={styles.loginButtonText}>Log In</Text>
+        {isPending ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.loginButtonText}>Log In</Text>
+        )}
       </TouchableOpacity>
 
       <Text style={styles.orSignInText}>or sign up with</Text>
@@ -137,7 +180,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           style={styles.socialButton}
           onPress={() => handleSocialLogin('google')}
         >
-          <FontAwesome6 name="google" size={24} color={Colors.primaryBlue} iconStyle="brand"/>
+          <FontAwesome6
+            name="google"
+            size={24}
+            color={Colors.primaryBlue}
+            iconStyle="brand"
+          />
         </TouchableOpacity>
 
         {/* <TouchableOpacity

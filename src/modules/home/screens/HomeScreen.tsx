@@ -13,6 +13,8 @@ import {
 
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../shared/stores';
 
 const { width } = Dimensions.get('window');
 
@@ -122,7 +124,10 @@ const CalendarSection = () => {
 // Component chính
 const HomeScreen = () => {
   const [activeBottomTab, setActiveBottomTab] = useState('home');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { accessToken, patient } = useSelector(
+    (state: RootState) => state.auth,
+  );
+  const isLoggedIn = !!accessToken;
   const navigation = useNavigation();
 
   // Dữ liệu cho các Quick Actions
@@ -152,9 +157,9 @@ const HomeScreen = () => {
         {/* HEADER */}
         <View style={styles.headerContainer}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {isLoggedIn ? (
+            {isLoggedIn && patient?.image ? (
               <Image
-                source={{ uri: 'https://i.pravatar.cc/100' }} // Avatar user thật
+                source={{ uri: patient.image }}
                 style={styles.profileImage}
               />
             ) : (
@@ -171,7 +176,9 @@ const HomeScreen = () => {
               {isLoggedIn ? (
                 <>
                   <Text style={styles.welcomeText}>Hi., Welcome Back</Text>
-                  <Text style={styles.userName}>John Doe</Text>
+                  <Text style={styles.userName}>
+                    {patient?.fullName || 'Người dùng'}
+                  </Text>
                 </>
               ) : (
                 <TouchableOpacity onPress={() => navigation.navigate('Login')}>
