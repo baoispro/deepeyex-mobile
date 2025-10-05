@@ -11,6 +11,7 @@ import ResetPasswordScreen from '../modules/auth/screens/ResetPasswordScreen';
 import CompleteProfileScreen from '../modules/auth/screens/CompleteProfileScreen';
 import MedicineListScreen from '../modules/home/screens/MedicineListScreen';
 import EyeDiagnosisScreen from '../modules/home/screens/EyeDiagnosisScreen';
+import BookAppointmentScreen from '../modules/home/screens/BookAppointmentScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -29,6 +30,10 @@ const AppNavigator = () => {
         <Stack.Screen
           name="CompleteProfile"
           component={CompleteProfileScreen}
+        />
+        <Stack.Screen
+          name="BookAppointment"
+          component={BookAppointmentScreen}
         />
         <Stack.Screen name="MedicineList" component={MedicineListScreen} />
         <Stack.Screen
