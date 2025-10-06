@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { ApiResponse } from '../types/response';
-import Config from 'react-native-config';
+import {API_BASE_URL} from '@env'
 
 // tạo 1 axios instance "raw" (không interceptor) để tránh loop
 
@@ -12,7 +12,7 @@ export type TokenResponse = {
 };
 
 const rawAxios = axios.create({
-  baseURL: Config.API_BASE_URL,
+  baseURL: API_BASE_URL,
   timeout: 5000,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,

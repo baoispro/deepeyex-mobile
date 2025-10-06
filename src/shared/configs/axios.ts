@@ -1,22 +1,22 @@
-import axios, { AxiosInstance } from "axios";
-import Config from "react-native-config";
-import { store } from "../stores";
-import { setTokens, clearTokens } from "../stores/authSlice";
-import { refreshToken } from "../api/refreshToken";
-import { useNavigation } from "@react-navigation/native";
+import axios, { AxiosInstance } from 'axios';
+import { store } from '../stores';
+import { setTokens, clearTokens } from '../stores/authSlice';
+import { refreshToken } from '../api/refreshToken';
+import { useNavigation } from '@react-navigation/native';
+import { API_BASE_URL } from '@env';
 
 // ---------------------- Axios instance ----------------------
 const api: AxiosInstance = axios.create({
-  baseURL: Config.API_BASE_URL,
+  baseURL: API_BASE_URL,
   timeout: 5000,
   headers: {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
   },
   withCredentials: true,
 });
 
 // ---------------------- Request Interceptor ----------------------
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(config => {
   const token = store.getState().auth.accessToken;
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -26,8 +26,8 @@ api.interceptors.request.use((config) => {
 
 // ---------------------- Response Interceptor ----------------------
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
+  response => response,
+  async error => {
     const originalRequest = error.config;
 
     // ✅ nếu token hết hạn (401), thử refresh 1 lần
@@ -36,16 +36,16 @@ api.interceptors.response.use(
       try {
         const state = store.getState().auth;
         const oldRefresh = state.refreshToken;
-        const res = await refreshToken(oldRefresh ?? "");
-        
+        const res = await refreshToken(oldRefresh ?? '');
+
         if (res.data?.access_token) {
           // ✅ cập nhật token mới vào Redux store
           store.dispatch(
             setTokens({
               accessToken: res.data.access_token,
-              refreshToken: res.data.refresh_token ?? "",
-              userId: state.userId ?? "",
-              role: state.role ?? "",
+              refreshToken: res.data.refresh_token ?? '',
+              userId: state.userId ?? '',
+              role: state.role ?? '',
             }),
           );
 
@@ -55,9 +55,9 @@ api.interceptors.response.use(
         }
       } catch (refreshErr) {
         // ❌ Refresh thất bại → logout + chuyển về login
-        const navigate = useNavigation()
+        const navigate = useNavigation();
         store.dispatch(clearTokens());
-        navigate.navigate("Login")
+        navigate.navigate('Login');
       }
     }
 
