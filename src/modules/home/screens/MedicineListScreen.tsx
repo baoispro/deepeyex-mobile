@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   View,
   Text,
@@ -10,6 +9,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Mock data thuốc
 const medicines = [
@@ -68,7 +68,7 @@ const MedicineListScreen = () => {
   if (selectedMedicine) {
     // Chi tiết thuốc
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         {renderHeader('Chi tiết thuốc', () => setSelectedMedicine(null))}
         <ScrollView contentContainerStyle={{ padding: 20 }}>
           <Image
@@ -92,7 +92,7 @@ const MedicineListScreen = () => {
 
   // Danh sách thuốc
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {renderHeader('Danh sách thuốc')}
       <ScrollView contentContainerStyle={{ padding: 20 }}>
         {medicines.map(med => (
