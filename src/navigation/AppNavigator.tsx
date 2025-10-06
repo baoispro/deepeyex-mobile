@@ -12,6 +12,9 @@ import CompleteProfileScreen from '../modules/auth/screens/CompleteProfileScreen
 import MedicineListScreen from '../modules/home/screens/MedicineListScreen';
 import EyeDiagnosisScreen from '../modules/home/screens/EyeDiagnosisScreen';
 import BookAppointmentScreen from '../modules/home/screens/BookAppointmentScreen';
+import ProfileScreen from '../modules/profile/screens/ProfileScreen';
+import ProfileInfoScreen from '../modules/profile/screens/ProfileInfoScreen';
+import SettingsScreen from '../modules/profile/screens/SettingsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -42,6 +45,9 @@ const AppNavigator = () => {
           options={{ headerShown: false }}
         />
         <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="ProfileInfo" component={ProfileInfoScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

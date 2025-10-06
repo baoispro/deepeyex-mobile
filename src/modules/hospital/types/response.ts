@@ -1,8 +1,9 @@
-import { ApiResponse } from "@/app/shares/types/response";
-import { Patient } from "./patient";
-import { Hospital } from "./hospital";
-import { Doctor } from "./doctor";
-import { TimeSlot } from "./timeslot";
+import { Patient } from './patient';
+import { Hospital } from './hospital';
+import { Doctor } from './doctor';
+import { TimeSlot } from './timeslot';
+import { Drug } from './drug';
+import { ApiResponse } from '../../../shared/types/response';
 
 type GetPatientResponse = ApiResponse<Patient>;
 
@@ -28,6 +29,10 @@ type ListDoctorsByHospitalResponse = ApiResponse<Doctor[]>;
 type ListTimeSlotsByDateResponse = ApiResponse<TimeSlot[]>;
 type ListTimeSlotsByMonthResponse = ApiResponse<TimeSlot[]>;
 
+// Drug
+type GetDrugByIdResponse = ApiResponse<Drug>;
+type ListDrugsResponse = ApiResponse<Drug[]>;
+
 export type {
   GetPatientResponse,
   CreateHospitalResponse,
@@ -46,4 +51,6 @@ export type {
   ListDoctorsByHospitalResponse,
   ListTimeSlotsByDateResponse,
   ListTimeSlotsByMonthResponse,
+  GetDrugByIdResponse,
+  ListDrugsResponse,
 };

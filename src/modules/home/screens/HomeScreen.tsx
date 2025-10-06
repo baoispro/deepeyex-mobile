@@ -298,7 +298,10 @@ const HomeScreen = () => {
 
         <TouchableOpacity
           style={styles.bottomNavItem}
-          onPress={() => setActiveBottomTab('profile')}
+          onPress={() => {
+            setActiveBottomTab('profile');
+            navigation.navigate('Profile');
+          }}
         >
           <Ionicons
             name="person"

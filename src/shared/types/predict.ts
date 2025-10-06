@@ -10,11 +10,11 @@ type DiagnosisResponse = {
 };
 
 type EyeDiseaseLabel =
-  | "conjunctivitis"
-  | "eyelidedema"
-  | "healthy_eye"
-  | "hordeolum"
-  | "keratitiswithulcer"
-  | "subconjunctival_hemorrhage";
+  | 'conjunctivitis'
+  | 'eyelidedema'
+  | 'healthy_eye'
+  | 'hordeolum'
+  | 'keratitiswithulcer'
+  | 'subconjunctival_hemorrhage';
 
 export type { Prediction, DiagnosisResponse, EyeDiseaseLabel };

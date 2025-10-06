@@ -36,7 +36,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isFocusedEmail, setIsFocusedEmail] = useState(false);
   const [isFocusedPassword, setIsFocusedPassword] = useState(false);
-
   const { mutate: login, isPending } = useLoginMutation({
     onSuccess: async data => {
       Alert.alert('✅ Login Successful', `Welcome ${data.data?.user_id}`);

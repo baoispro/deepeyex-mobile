@@ -1,8 +1,8 @@
-import { AxiosInstance } from "axios";
-import api from "../configs/axios";
-import { DiagnosisResponse } from "../types/predict";
+import { AxiosInstance } from 'axios';
+import api from '../configs/axios';
+import { DiagnosisResponse } from '../types/predict';
 
-const endpoint = "/external-eye/predict";
+const endpoint = '/external-eye/predict';
 
 class PredictClient {
   private readonly client: AxiosInstance;
@@ -13,19 +13,16 @@ class PredictClient {
 
   /**
    * Upload ảnh để AI chẩn đoán
-   * @param file - File ảnh cần upload
+   * @param formData - FormData chứa ảnh cần upload
    * @param topK - Số lượng kết quả dự đoán top K
    */
-  async predict(file: File, topK = 3): Promise<DiagnosisResponse> {
-    const formData = new FormData();
-    formData.append("file", file);
-
+  async predict(formData: FormData, topK = 3): Promise<DiagnosisResponse> {
     const response = await this.client.post<DiagnosisResponse>(
       `${endpoint}?top_k=${topK}`,
       formData,
       {
         headers: {
-          "Content-Type": "multipart/form-data",
+          'Content-Type': 'multipart/form-data',
         },
       },
     );
