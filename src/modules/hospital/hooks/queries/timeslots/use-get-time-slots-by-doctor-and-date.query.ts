@@ -1,5 +1,5 @@
 import { QueryKey, useQuery, UseQueryOptions } from "@tanstack/react-query";
-import { QueryKeyEnum } from "@/app/shares/enums/queryKey";
+import { QueryKeyEnum } from "../../../../../shared/enums/queryKey";
 import { ListTimeSlotsByDateResponse } from "../../../types/response";
 import { TimeSlotApi } from "../../../apis/appointment/timeslotApi";
 

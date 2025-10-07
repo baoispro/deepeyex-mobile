@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../../../shared/stores';
+import { persistor, RootState } from '../../../shared/stores';
 import { clearTokens } from '../../../shared/stores/authSlice';
 import BottomNavigation from '../../../shared/components/BottomNavigation';
 
@@ -35,7 +35,7 @@ const ProfileScreen = () => {
         style: 'destructive',
         onPress: () => {
           dispatch(clearTokens());
-          (navigation as any).navigate('Login');
+          persistor.flush();
         },
       },
     ]);
@@ -84,6 +84,7 @@ const ProfileScreen = () => {
             </TouchableOpacity>
           </View>
         </View>
+        <BottomNavigation activeTab="profile" />
       </SafeAreaView>
     );
   }

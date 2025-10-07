@@ -1,5 +1,5 @@
 import { QueryKey, useQuery, UseQueryOptions } from "@tanstack/react-query";
-import { QueryKeyEnum } from "../../../../../shares/enums/queryKey";
+import { QueryKeyEnum } from "../../../../../shared/enums/queryKey";
 import { PatientApi } from "../../../apis/patient/patientApi";
 import { GetPatientResponse } from "../../../types/response";
 

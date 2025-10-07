@@ -1,7 +1,7 @@
 import { QueryKey, useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { HospitalApi } from "../../../apis/hospital/hospitalApi";
-import { QueryKeyEnum } from "@/app/shares/enums/queryKey";
 import { SearchByAddressResponse } from "../../../types/response";
+import { QueryKeyEnum } from "../../../../../shared/enums/queryKey";
 
 type Options = Omit<
   UseQueryOptions<SearchByAddressResponse, Error, SearchByAddressResponse, QueryKey>,

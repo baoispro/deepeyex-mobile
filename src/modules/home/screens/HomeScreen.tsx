@@ -283,7 +283,6 @@ const HomeScreen = () => {
             name="chatbubble" // hoặc "chatbubble-outline"
             size={24}
             color={activeBottomTab === 'chat' ? '#1250dc' : '#a6a6a6'}
-            // style={styles.bottomNavIcon}
           />
 
           <Text
@@ -558,8 +557,6 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   bottomNavItem: { alignItems: 'center', justifyContent: 'center', flex: 1 },
-  bottomNavIcon: { fontSize: 24, color: '#a6a6a6' },
-  activeIcon: { fontSize: 30, color: '#3b5998' },
   bottomNavLabel: { fontSize: 12, color: '#a6a6a6', marginTop: 4 }, // Màu mặc định cho label
   activeLabel: { color: '#1250dc', fontWeight: 'bold' }, // Màu active cho label
   loginPrompt: {

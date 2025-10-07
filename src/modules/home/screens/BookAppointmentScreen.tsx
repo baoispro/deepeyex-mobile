@@ -130,7 +130,7 @@ const hospitals = [
   },
   {
     hospital_id: '1a7c3c63-8e4f-4c8a-9b9e-2a45b3ecfb2e',
-    name: 'Bệnh viện Quân Y 175',
+    name: 'Bệnh viện Mắt',
     address: '786 Nguyễn Kiệm',
     phone: '1800 6928',
     email: 'banctxhbenhvienquany175@gmail.com',
@@ -758,7 +758,7 @@ const patients: Patient[] = [
   {
     patient_id: '1',
     user_id: 'user1',
-    full_name: 'Nguyễn Văn A',
+    full_name: 'bao',
     dob: '1990-01-15T00:00:00+07:00',
     gender: 'male',
     address: '123 Đường ABC, Quận 1, TP.HCM',
