@@ -10,10 +10,27 @@ import {
   Alert,
   TextInput,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useGetAllHospitalsQuery } from '../../hospital/hooks/queries/hospitals/use-get-list-hospital.query';
+import { useGetAllCitiesQuery } from '../../hospital/hooks/queries/hospitals/use-get-list-cities.query';
+import { useGetWardsbyCityQuery } from '../../hospital/hooks/queries/hospitals/use-get-list-wards-by-city.query';
+import { useGetHospitalbyAddressQuery } from '../../hospital/hooks/queries/hospitals/use-get-hospital-by address.query';
+import { Hospital } from '../../hospital/types/hospital';
+import { Doctor } from '../../hospital/types/doctor';
+import { useGetAllServicesByDoctorIdQuery } from '../../hospital/hooks/queries/services/use-get-list-service.query';
+import { useGetTimeSlotsByDoctorIdQuery } from '../../hospital/hooks/queries/timeslots/use-get-time-slots-by-doctor-id.query';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../shared/stores';
+import { useCreateBookingMutation } from '../../hospital/hooks/mutations/booking/use-create-booking.mutation';
+import { BookingRequest } from '../../hospital/apis/booking/bookingApi';
+import {
+  SendAppointmentConfirmationRequest,
+  SendEmailApi,
+} from '../../hospital/apis/sendmail/sendMailApi';
 
 const { width } = Dimensions.get('window');
 
@@ -25,38 +42,6 @@ const Colors = {
   backgroundWhite: '#FFFFFF',
 };
 
-export type HospitalType = {
-  hospital_id: string;
-  name: string;
-  address: string;
-  phone: string;
-  email: string;
-  image: string;
-  created_at: string;
-  updated_at: string;
-  //   Doctors?: Doctor[];
-  slug: string;
-  url_map: string;
-  ward: string;
-  city: string;
-  latitude?: number;
-  longitude?: number;
-};
-
-export type Doctor = {
-  doctor_id: string;
-  user_id: string;
-  full_name: string;
-  phone: string;
-  email: string;
-  image: string;
-  specialty: Specialty;
-  hospital_id: string;
-  created_at: string;
-  updated_at: string;
-  slug: string;
-};
-
 export type TimeSlot = {
   slot_id: string;
   doctor_id: string;
@@ -66,15 +51,6 @@ export type TimeSlot = {
   created_at: string;
   updated_at: string;
   appointment_id?: string;
-};
-
-export type Service = {
-  service_id: string;
-  name: string;
-  duration: number;
-  price: number;
-  created_at: string;
-  updated_at: string;
 };
 
 export type Patient = {
@@ -108,667 +84,17 @@ const SpecialtyLabel: Record<Specialty, string> = {
 };
 
 // Dữ liệu mẫu
-const hospitals = [
-  {
-    hospital_id: '11',
-    name: 'Bệnh viện Quân Y 175',
-    address: '786 Nguyễn Kiệm',
-    phone: '1800 6928',
-    email: 'banctxhbenhvienquany175@gmail.com',
-    image:
-      'https://deepeyex.s3.ap-southeast-1.amazonaws.com/hospitals/b%E1%BB%87nh%20vi%E1%BB%87n%20175.jpg',
-    created_at: '2025-09-22T14:30:00+07:00',
-    updated_at: '2025-09-22T14:30:00+07:00',
-    Doctors: null,
-    slug: 'benh-vien-quan-y-175',
-    url_map:
-      'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3918.918941142445!2d106.67808657326465!3d10.817515158438107!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x317528e2324759b7%3A0x6c91974ff86f05e3!2zQuG7h25oIHZp4buHbiBRdcOibiBZIDE3NQ!5e0!3m2!1svi!2s!4v1757917057537!5m2!1svi!2s',
-    ward: 'Phường Hạnh Thông',
-    city: 'Thành phố Hồ Chí Minh',
-    latitude: 10.81752392,
-    longitude: 106.68066023,
-  },
-  {
-    hospital_id: '1a7c3c63-8e4f-4c8a-9b9e-2a45b3ecfb2e',
-    name: 'Bệnh viện Mắt',
-    address: '786 Nguyễn Kiệm',
-    phone: '1800 6928',
-    email: 'banctxhbenhvienquany175@gmail.com',
-    image:
-      'https://deepeyex.s3.ap-southeast-1.amazonaws.com/hospitals/b%E1%BB%87nh%20vi%E1%BB%87n%20175.jpg',
-    created_at: '2025-09-22T14:30:00+07:00',
-    updated_at: '2025-09-22T14:30:00+07:00',
-    Doctors: null,
-    slug: 'benh-vien-quan-y-175',
-    url_map:
-      'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3918.918941142445!2d106.67808657326465!3d10.817515158438107!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x317528e2324759b7%3A0x6c91974ff86f05e3!2zQuG7h25oIHZp4buHbiBRdcOibiBZIDE3NQ!5e0!3m2!1svi!2s!4v1757917057537!5m2!1svi!2s',
-    ward: 'Phường Hạnh Thông',
-    city: 'Thành phố Hồ Chí Minh',
-    latitude: 10.81752392,
-    longitude: 106.68066023,
-  },
-];
 
-// Dữ liệu mẫu cho tỉnh thành và xã phường
-const provinces = [
-  { id: '1', name: 'Thành phố Hồ Chí Minh' },
-  { id: '2', name: 'Hà Nội' },
-  { id: '3', name: 'Đà Nẵng' },
-  { id: '4', name: 'Cần Thơ' },
-  { id: '5', name: 'An Giang' },
-  { id: '6', name: 'Bà Rịa - Vũng Tàu' },
-  { id: '7', name: 'Bắc Giang' },
-  { id: '8', name: 'Bắc Kạn' },
-  { id: '9', name: 'Bạc Liêu' },
-  { id: '10', name: 'Bắc Ninh' },
-];
-
-const wards = {
-  '1': [
-    // TP.HCM
-    { id: '1', name: 'Phường Hạnh Thông', district: 'Quận Gò Vấp' },
-    { id: '2', name: 'Phường 1', district: 'Quận 1' },
-    { id: '3', name: 'Phường 2', district: 'Quận 1' },
-    { id: '4', name: 'Phường 3', district: 'Quận 1' },
-    { id: '5', name: 'Phường 4', district: 'Quận 1' },
-    { id: '6', name: 'Phường 5', district: 'Quận 1' },
-    { id: '7', name: 'Phường 6', district: 'Quận 1' },
-    { id: '8', name: 'Phường 7', district: 'Quận 1' },
-    { id: '9', name: 'Phường 8', district: 'Quận 1' },
-    { id: '10', name: 'Phường 9', district: 'Quận 1' },
-  ],
-  '2': [
-    // Hà Nội
-    { id: '11', name: 'Phường Phúc Xá', district: 'Quận Ba Đình' },
-    { id: '12', name: 'Phường Trúc Bạch', district: 'Quận Ba Đình' },
-    { id: '13', name: 'Phường Vĩnh Phú', district: 'Quận Ba Đình' },
-  ],
-  '3': [
-    // Đà Nẵng
-    { id: '14', name: 'Phường Hải Châu 1', district: 'Quận Hải Châu' },
-    { id: '15', name: 'Phường Hải Châu 2', district: 'Quận Hải Châu' },
-  ],
+type PatientInfo = {
+  patientId: string | null;
+  fullName: string | null;
+  dob: string | null;
+  gender: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  image: string | null;
 };
-
-const doctors: Doctor[] = [
-  {
-    doctor_id: '1',
-    user_id: 'user1',
-    full_name: 'BS. Nguyễn Văn A',
-    phone: '0909090909',
-    email: 'doctor1@example.com',
-    image: 'https://via.placeholder.com/80x80',
-    specialty: Specialty.Ophthalmology,
-    hospital_id: '11',
-    created_at: '2025-01-01T00:00:00Z',
-    updated_at: '2025-01-01T00:00:00Z',
-    slug: 'bs-nguyen-van-a',
-  },
-  {
-    doctor_id: '2',
-    user_id: 'user2',
-    full_name: 'BS. Trần Thị B',
-    phone: '0909090909',
-    email: 'doctor2@example.com',
-    image: 'https://via.placeholder.com/80x80',
-    specialty: Specialty.Ophthalmology,
-    hospital_id: '11',
-    created_at: '2025-01-01T00:00:00Z',
-    updated_at: '2025-01-01T00:00:00Z',
-    slug: 'bs-tran-thi-b',
-  },
-  {
-    doctor_id: '3',
-    user_id: 'user3',
-    full_name: 'BS. Lê Văn C',
-    phone: '0909090909',
-    email: 'doctor3@example.com',
-    image: 'https://via.placeholder.com/80x80',
-    specialty: Specialty.Ophthalmology,
-    hospital_id: '1a7c3c63-8e4f-4c8a-9b9e-2a45b3ecfb2e',
-    created_at: '2025-01-01T00:00:00Z',
-    updated_at: '2025-01-01T00:00:00Z',
-    slug: 'bs-le-van-c',
-  },
-];
-
-const services = [
-  {
-    service_id: 1,
-    name: 'Khám tổng quát mắt',
-    price: '200,000 VNĐ',
-    duration: 30,
-  },
-  {
-    service_id: 2,
-    name: 'Khám chuyên sâu mắt',
-    price: '500,000 VNĐ',
-    duration: 30,
-  },
-  { service_id: 3, name: 'Đo thị lực', price: '100,000 VNĐ', duration: 30 },
-  {
-    service_id: 4,
-    name: 'Khám mắt trẻ em',
-    price: '300,000 VNĐ',
-    duration: 30,
-  },
-];
-
-const timeSlots = [
-  {
-    slot_id: '8e0df6df-b1c2-4abe-87b6-f69af38d1f6f',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-06T09:00:00+07:00',
-    end_time: '2025-10-06T10:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379165+07:00',
-    updated_at: '2025-10-03T11:17:35.379165+07:00',
-  },
-  {
-    slot_id: '9f42a8a4-4eea-4283-9cd7-a37b77d272d4',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-06T10:00:00+07:00',
-    end_time: '2025-10-06T11:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379167+07:00',
-    updated_at: '2025-10-03T11:17:35.379167+07:00',
-  },
-  {
-    slot_id: '9d780b5e-2880-43e8-b995-05d92f1bb6d7',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-06T11:00:00+07:00',
-    end_time: '2025-10-06T12:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379179+07:00',
-    updated_at: '2025-10-03T11:17:35.379179+07:00',
-  },
-  {
-    slot_id: '700930df-1097-45cd-9aa5-45f43336a357',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-06T13:30:00+07:00',
-    end_time: '2025-10-06T14:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379181+07:00',
-    updated_at: '2025-10-03T11:17:35.379181+07:00',
-  },
-  {
-    slot_id: '30da38a7-7d5a-479c-a8a3-c86a9c72e555',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-06T14:00:00+07:00',
-    end_time: '2025-10-06T15:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379182+07:00',
-    updated_at: '2025-10-03T11:17:35.379182+07:00',
-  },
-  {
-    slot_id: 'e2f9059c-726b-4dbd-a923-175437392bb5',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-06T15:00:00+07:00',
-    end_time: '2025-10-06T16:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379183+07:00',
-    updated_at: '2025-10-03T11:17:35.379184+07:00',
-  },
-  {
-    slot_id: 'eeac7040-5e1a-48bc-9b37-0125b29664de',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-06T16:00:00+07:00',
-    end_time: '2025-10-06T17:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379185+07:00',
-    updated_at: '2025-10-03T11:17:35.379185+07:00',
-  },
-  {
-    slot_id: '56a934e4-9b41-4661-990f-9d03b67def71',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-06T18:00:00+07:00',
-    end_time: '2025-10-06T19:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379186+07:00',
-    updated_at: '2025-10-03T11:17:35.379186+07:00',
-  },
-  {
-    slot_id: 'b4e0a2be-a90f-47f6-a27a-a2253c695f3d',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-06T19:00:00+07:00',
-    end_time: '2025-10-06T20:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379189+07:00',
-    updated_at: '2025-10-03T11:17:35.379189+07:00',
-  },
-  {
-    slot_id: '85123a4f-47ea-42f9-9225-10332ce35327',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-06T20:00:00+07:00',
-    end_time: '2025-10-06T21:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.37919+07:00',
-    updated_at: '2025-10-03T11:17:35.37919+07:00',
-  },
-  {
-    slot_id: 'e241c96b-a498-4984-bff0-6053ab9540ce',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-07T08:30:00+07:00',
-    end_time: '2025-10-07T09:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379193+07:00',
-    updated_at: '2025-10-03T11:17:35.379193+07:00',
-  },
-  {
-    slot_id: '5575a9bf-3ea5-40e9-9993-13e17a22d40f',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-07T09:00:00+07:00',
-    end_time: '2025-10-07T10:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379194+07:00',
-    updated_at: '2025-10-03T11:17:35.379194+07:00',
-  },
-  {
-    slot_id: 'ef7c8883-5f6f-4e43-b1e4-f6382944d206',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-07T10:00:00+07:00',
-    end_time: '2025-10-07T11:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379195+07:00',
-    updated_at: '2025-10-03T11:17:35.379195+07:00',
-  },
-  {
-    slot_id: '218fe60d-8032-45f3-aabe-33b7d1c7f16c',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-07T11:00:00+07:00',
-    end_time: '2025-10-07T12:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379196+07:00',
-    updated_at: '2025-10-03T11:17:35.379196+07:00',
-  },
-  {
-    slot_id: '12339964-bb49-46cc-8885-4c111f2ae7e5',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-07T13:30:00+07:00',
-    end_time: '2025-10-07T14:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379197+07:00',
-    updated_at: '2025-10-03T11:17:35.379197+07:00',
-  },
-  {
-    slot_id: '5f0bcdda-2db7-4681-afe6-46a1b5015d9c',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-07T14:00:00+07:00',
-    end_time: '2025-10-07T15:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379198+07:00',
-    updated_at: '2025-10-03T11:17:35.379198+07:00',
-  },
-  {
-    slot_id: 'f47ddd16-aeb5-493a-a4af-0e2c3961e9cf',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-07T15:00:00+07:00',
-    end_time: '2025-10-07T16:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379208+07:00',
-    updated_at: '2025-10-03T11:17:35.379208+07:00',
-  },
-  {
-    slot_id: '19197f18-b9ed-49ec-b865-152636389f7f',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-07T16:00:00+07:00',
-    end_time: '2025-10-07T17:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379209+07:00',
-    updated_at: '2025-10-03T11:17:35.379209+07:00',
-  },
-  {
-    slot_id: 'ad48c8f7-8142-4af2-b190-ff65a5c849f7',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-07T18:00:00+07:00',
-    end_time: '2025-10-07T19:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.37921+07:00',
-    updated_at: '2025-10-03T11:17:35.37921+07:00',
-  },
-  {
-    slot_id: 'ced4d24e-5de3-49a2-af8a-c6fddbde0ebf',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-07T19:00:00+07:00',
-    end_time: '2025-10-07T20:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379211+07:00',
-    updated_at: '2025-10-03T11:17:35.379211+07:00',
-  },
-  {
-    slot_id: '69e4b955-11a9-49cc-8485-e9680e906b35',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-07T20:00:00+07:00',
-    end_time: '2025-10-07T21:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379212+07:00',
-    updated_at: '2025-10-03T11:17:35.379212+07:00',
-  },
-  {
-    slot_id: 'a7179974-1215-4598-9f02-256e5ee83f1d',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-08T08:30:00+07:00',
-    end_time: '2025-10-08T09:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379214+07:00',
-    updated_at: '2025-10-03T11:17:35.379214+07:00',
-  },
-  {
-    slot_id: 'cafa3c9f-ae45-4697-a362-22f96ee3631b',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-08T09:00:00+07:00',
-    end_time: '2025-10-08T10:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379215+07:00',
-    updated_at: '2025-10-03T11:17:35.379215+07:00',
-  },
-  {
-    slot_id: '29d2dea7-8f97-4c90-90c0-2c903e27a76d',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-08T10:00:00+07:00',
-    end_time: '2025-10-08T11:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379216+07:00',
-    updated_at: '2025-10-03T11:17:35.379216+07:00',
-  },
-  {
-    slot_id: '5d1ca789-6456-46e4-ba06-ff5f5d738567',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-08T11:00:00+07:00',
-    end_time: '2025-10-08T12:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379217+07:00',
-    updated_at: '2025-10-03T11:17:35.379217+07:00',
-  },
-  {
-    slot_id: '85809a24-3821-49e3-8aca-44563352325f',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-08T13:30:00+07:00',
-    end_time: '2025-10-08T14:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379218+07:00',
-    updated_at: '2025-10-03T11:17:35.379218+07:00',
-  },
-  {
-    slot_id: '22bc455d-b322-4a7e-8ad0-0f92d8d24c81',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-08T14:00:00+07:00',
-    end_time: '2025-10-08T15:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379219+07:00',
-    updated_at: '2025-10-03T11:17:35.379219+07:00',
-  },
-  {
-    slot_id: '2bd070e6-33af-4a7f-a7b3-6187a5939dae',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-08T15:00:00+07:00',
-    end_time: '2025-10-08T16:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.37922+07:00',
-    updated_at: '2025-10-03T11:17:35.37922+07:00',
-  },
-  {
-    slot_id: '5a54620d-26a3-4115-90bf-454a39d63a10',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-08T16:00:00+07:00',
-    end_time: '2025-10-08T17:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379221+07:00',
-    updated_at: '2025-10-03T11:17:35.379221+07:00',
-  },
-  {
-    slot_id: '365bf77a-32ba-4cfe-846c-328b11ecbe14',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-08T18:00:00+07:00',
-    end_time: '2025-10-08T19:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379222+07:00',
-    updated_at: '2025-10-03T11:17:35.379222+07:00',
-  },
-  {
-    slot_id: '80932c06-ac2b-401b-bd79-ab9f9037f151',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-08T19:00:00+07:00',
-    end_time: '2025-10-08T20:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379223+07:00',
-    updated_at: '2025-10-03T11:17:35.379223+07:00',
-  },
-  {
-    slot_id: 'a043f094-7869-4682-8aa7-1072312a609e',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-08T20:00:00+07:00',
-    end_time: '2025-10-08T21:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379224+07:00',
-    updated_at: '2025-10-03T11:17:35.379224+07:00',
-  },
-  {
-    slot_id: '5b958cca-d6be-4dc3-bc30-4a586a8145ba',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-09T08:30:00+07:00',
-    end_time: '2025-10-09T09:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379225+07:00',
-    updated_at: '2025-10-03T11:17:35.379225+07:00',
-  },
-  {
-    slot_id: 'a636286e-8b63-43ea-a4e1-bc5e7382bbb9',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-09T09:00:00+07:00',
-    end_time: '2025-10-09T10:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379235+07:00',
-    updated_at: '2025-10-03T11:17:35.379235+07:00',
-  },
-  {
-    slot_id: '06c02322-e229-4d16-bc9c-a92a74647095',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-09T10:00:00+07:00',
-    end_time: '2025-10-09T11:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379236+07:00',
-    updated_at: '2025-10-03T11:17:35.379236+07:00',
-  },
-  {
-    slot_id: '664a0b05-4619-49e0-8e36-d0c9644fee48',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-09T11:00:00+07:00',
-    end_time: '2025-10-09T12:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379237+07:00',
-    updated_at: '2025-10-03T11:17:35.379237+07:00',
-  },
-  {
-    slot_id: '201c6178-7dd4-45a0-9c70-3ceb6dcb1ae7',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-09T13:30:00+07:00',
-    end_time: '2025-10-09T14:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379238+07:00',
-    updated_at: '2025-10-03T11:17:35.379238+07:00',
-  },
-  {
-    slot_id: '6fa1ceb3-e034-45fc-9237-d0baaf030ae6',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-09T14:00:00+07:00',
-    end_time: '2025-10-09T15:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379239+07:00',
-    updated_at: '2025-10-03T11:17:35.37924+07:00',
-  },
-  {
-    slot_id: '24bbd6be-482a-433f-ace4-4971c2f63ae3',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-09T15:00:00+07:00',
-    end_time: '2025-10-09T16:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.37924+07:00',
-    updated_at: '2025-10-03T11:17:35.379241+07:00',
-  },
-  {
-    slot_id: '5e6731c1-f9cb-4173-9f3b-66c99a353808',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-09T16:00:00+07:00',
-    end_time: '2025-10-09T17:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379241+07:00',
-    updated_at: '2025-10-03T11:17:35.379242+07:00',
-  },
-  {
-    slot_id: 'a7188211-c2c1-4efb-bdbd-1bbaf08185ef',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-09T18:00:00+07:00',
-    end_time: '2025-10-09T19:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379243+07:00',
-    updated_at: '2025-10-03T11:17:35.379243+07:00',
-  },
-  {
-    slot_id: '8b2ff070-3ca6-4dd5-b6c2-a7cffa73920a',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-09T19:00:00+07:00',
-    end_time: '2025-10-09T20:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379244+07:00',
-    updated_at: '2025-10-03T11:17:35.379244+07:00',
-  },
-  {
-    slot_id: '9980ecef-c80a-4698-9173-d5160b69743d',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-09T20:00:00+07:00',
-    end_time: '2025-10-09T21:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379245+07:00',
-    updated_at: '2025-10-03T11:17:35.379245+07:00',
-  },
-  {
-    slot_id: '1268d460-d153-4e7b-8790-12c44a7942bb',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-10T08:30:00+07:00',
-    end_time: '2025-10-10T09:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379246+07:00',
-    updated_at: '2025-10-03T11:17:35.379246+07:00',
-  },
-  {
-    slot_id: 'c077f74d-eae7-423d-a185-210fa84cabc8',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-10T09:00:00+07:00',
-    end_time: '2025-10-10T10:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379247+07:00',
-    updated_at: '2025-10-03T11:17:35.379247+07:00',
-  },
-  {
-    slot_id: 'c8428660-7be5-417f-941d-af261b691e13',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-10T10:00:00+07:00',
-    end_time: '2025-10-10T11:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379248+07:00',
-    updated_at: '2025-10-03T11:17:35.379248+07:00',
-  },
-  {
-    slot_id: 'adbf3167-b835-4c51-b8ab-0f1b23d65208',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-10T11:00:00+07:00',
-    end_time: '2025-10-10T12:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379249+07:00',
-    updated_at: '2025-10-03T11:17:35.379249+07:00',
-  },
-  {
-    slot_id: '601b7b7c-3338-4c5b-b341-7fedb3b3df45',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-10T13:30:00+07:00',
-    end_time: '2025-10-10T14:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.37925+07:00',
-    updated_at: '2025-10-03T11:17:35.37925+07:00',
-  },
-  {
-    slot_id: 'f9d51905-7a4a-4ba6-8c3a-9b32ede88501',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-10T14:00:00+07:00',
-    end_time: '2025-10-10T15:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379251+07:00',
-    updated_at: '2025-10-03T11:17:35.379251+07:00',
-  },
-  {
-    slot_id: 'd34ce027-0669-4001-bfce-00c28e0f06da',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-10T15:00:00+07:00',
-    end_time: '2025-10-10T16:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379252+07:00',
-    updated_at: '2025-10-03T11:17:35.379252+07:00',
-  },
-  {
-    slot_id: '3585d59e-4870-4d90-973b-1352fa8ee310',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-10T16:00:00+07:00',
-    end_time: '2025-10-10T17:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379253+07:00',
-    updated_at: '2025-10-03T11:17:35.379253+07:00',
-  },
-  {
-    slot_id: 'c410e92f-04da-4f64-86a9-f9cad6baecb8',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-10T18:00:00+07:00',
-    end_time: '2025-10-10T19:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379254+07:00',
-    updated_at: '2025-10-03T11:17:35.379254+07:00',
-  },
-  {
-    slot_id: 'b55b203f-6080-446c-9c95-272be8874762',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-10T19:00:00+07:00',
-    end_time: '2025-10-10T20:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379255+07:00',
-    updated_at: '2025-10-03T11:17:35.379255+07:00',
-  },
-  {
-    slot_id: '67ccde14-ae02-4f87-a421-5c7fd8986ff7',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-10T20:00:00+07:00',
-    end_time: '2025-10-10T21:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379256+07:00',
-    updated_at: '2025-10-03T11:17:35.379256+07:00',
-  },
-  {
-    slot_id: '003f64ad-70f0-426c-8d65-fa821af9c77e',
-    doctor_id: 'ff6adc0a-5cd3-4aef-acf1-d9d0820e434d',
-    start_time: '2025-10-06T08:30:00+07:00',
-    end_time: '2025-10-06T09:00:00+07:00',
-    capacity: 1,
-    created_at: '2025-10-03T11:17:35.379104+07:00',
-    updated_at: '2025-10-03T11:17:35.379104+07:00',
-    appointment_id: '7bf9d5c1-807a-4072-b760-787aaf256236',
-  },
-];
-
-// Dữ liệu mẫu cho patients
-const patients: Patient[] = [
-  {
-    patient_id: '1',
-    user_id: 'user1',
-    full_name: 'bao',
-    dob: '1990-01-15T00:00:00+07:00',
-    gender: 'male',
-    address: '123 Đường ABC, Quận 1, TP.HCM',
-    phone: '0901234567',
-    email: 'nguyenvana@example.com',
-    image: 'https://via.placeholder.com/80x80',
-    created_at: '2025-01-01T00:00:00Z',
-    updated_at: '2025-01-01T00:00:00Z',
-  },
-];
 
 type Step =
   | 'hospital'
@@ -780,9 +106,12 @@ type Step =
 
 const BookAppointmentScreen = () => {
   const navigation = useNavigation();
+  const { patient, userId } = useSelector((state: RootState) => state.auth);
   const [currentStep, setCurrentStep] = useState<Step>('hospital');
-  const [selectedHospital, setSelectedHospital] = useState<HospitalType>();
-  const [selectedDoctor, setSelectedDoctor] = useState<Doctor>();
+  const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(
+    null,
+  );
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [selectedService, setSelectedService] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     // Set ngày hiện tại làm mặc định
@@ -792,12 +121,12 @@ const BookAppointmentScreen = () => {
 
   // States cho filter và tìm kiếm
   const [searchText, setSearchText] = useState<string>('');
-  const [selectedProvince, setSelectedProvince] = useState<any>(null);
-  const [selectedWard, setSelectedWard] = useState<any>(null);
+  const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
+  const [selectedWard, setSelectedWard] = useState<string | null>(null);
   const [showProvinceModal, setShowProvinceModal] = useState<boolean>(false);
   const [showWardModal, setShowWardModal] = useState<boolean>(false);
-  const [filteredHospitals, setFilteredHospitals] =
-    useState<HospitalType[]>(hospitals);
+  const [allHospitals, setAllHospitals] = useState<Hospital[]>([]);
+  const [filteredHospitals, setFilteredHospitals] = useState<Hospital[]>([]);
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -805,7 +134,7 @@ const BookAppointmentScreen = () => {
 
   // States cho filter bác sĩ
   const [doctorSearchText, setDoctorSearchText] = useState<string>('');
-  const [filteredDoctors, setFilteredDoctors] = useState<Doctor[]>(doctors);
+  const [filteredDoctors, setFilteredDoctors] = useState<Doctor[]>([]);
 
   // States cho time slots
   const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlot[]>([]);
@@ -814,11 +143,13 @@ const BookAppointmentScreen = () => {
   );
 
   // States cho patient - tự động chọn bệnh nhân đầu tiên
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(
-    patients[0],
+  const [selectedPatient, setSelectedPatient] = useState<PatientInfo | null>(
+    patient,
   );
   const [isEditingPatient, setIsEditingPatient] = useState<boolean>(false);
-  const [tempPatientData, setTempPatientData] = useState<Patient | null>(null);
+  const [tempPatientData, setTempPatientData] = useState<PatientInfo | null>(
+    null,
+  );
   const [patientErrors, setPatientErrors] = useState<Record<string, string>>(
     {},
   );
@@ -860,23 +191,23 @@ const BookAppointmentScreen = () => {
     // Validate form
     const errors: Record<string, string> = {};
 
-    if (!tempPatientData.full_name.trim()) {
+    if (!tempPatientData?.fullName?.trim()) {
       errors.full_name = 'Họ tên không được để trống';
     }
 
-    if (!tempPatientData.phone.trim()) {
+    if (!tempPatientData?.phone?.trim()) {
       errors.phone = 'Số điện thoại không được để trống';
     } else if (!/^[0-9]{10,11}$/.test(tempPatientData.phone)) {
       errors.phone = 'Số điện thoại không hợp lệ';
     }
 
-    if (!tempPatientData.email.trim()) {
+    if (!tempPatientData?.email?.trim()) {
       errors.email = 'Email không được để trống';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(tempPatientData.email)) {
       errors.email = 'Email không hợp lệ';
     }
 
-    if (!tempPatientData.address.trim()) {
+    if (!tempPatientData?.address?.trim()) {
       errors.address = 'Địa chỉ không được để trống';
     }
 
@@ -938,35 +269,104 @@ const BookAppointmentScreen = () => {
     return R * c;
   };
 
+  // Kết nối API để lấy danh sách bệnh viện
+  const {
+    data: hospitalsData,
+    isLoading: isLoadingHospitals,
+    isError: isErrorHospitals,
+    error: hospitalsError,
+    refetch: refetchHospitals,
+  } = useGetAllHospitalsQuery();
+
+  const { data: provinces } = useGetAllCitiesQuery();
+  const { data: wards } = useGetWardsbyCityQuery(selectedProvince ?? '', {
+    enabled: !!selectedProvince,
+  });
+
+  const { data: hospitalsByAddress } = useGetHospitalbyAddressQuery(
+    searchText,
+    {
+      enabled: !!searchText,
+    },
+  );
+
+  const { data: dataServices } = useGetAllServicesByDoctorIdQuery(
+    selectedDoctor?.doctor_id || '',
+  );
+
+  const { data: dataTimeSlots } = useGetTimeSlotsByDoctorIdQuery(
+    selectedDoctor?.doctor_id || '',
+  );
+
+  const { mutate: createBooking, isPending } = useCreateBookingMutation({
+    onSuccess: () => {
+      Alert.alert(
+        'Đặt lịch thành công!',
+        `Bạn đã đặt lịch khám với ${selectedDoctor?.full_name} tại ${
+          selectedHospital?.name
+        } vào ${selectedDate} lúc ${formatTimeDisplay(
+          selectedTimeSlot?.start_time || '',
+          selectedTimeSlot?.end_time || '',
+        )}`,
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack(),
+          },
+        ],
+      );
+    },
+    onError: (err: any) => {
+      const errorMessage =
+        err.response?.data?.message || err.message || 'Unknown error';
+      Alert.alert(
+        'Đặt lịch thất bại',
+        `Lỗi: ${errorMessage}\n\nChi tiết: ${JSON.stringify(
+          err.response?.data || {},
+          null,
+          2,
+        )}`,
+      );
+    },
+  });
+
+  // Update allHospitals và filteredHospitals khi nhận được data từ API
+  useEffect(() => {
+    if (hospitalsData?.data) {
+      const hospitalsFromApi = hospitalsData.data as Hospital[];
+      setAllHospitals(hospitalsFromApi);
+      setFilteredHospitals(hospitalsFromApi);
+    }
+  }, [hospitalsData]);
+
   // Function để filter bệnh viện
   const filterHospitals = useCallback(() => {
-    let filtered = hospitals;
-
+    let filtered = allHospitals;
     // Filter theo tên bệnh viện
-    if (searchText.trim()) {
-      filtered = filtered.filter(
-        hospital =>
-          hospital.name.toLowerCase().includes(searchText.toLowerCase()) ||
-          hospital.address.toLowerCase().includes(searchText.toLowerCase()),
-      );
+    if (searchText.trim() && hospitalsByAddress?.data) {
+      filtered = hospitalsByAddress?.data || [];
     }
 
     // Filter theo tỉnh thành
     if (selectedProvince) {
       filtered = filtered.filter(
-        hospital => hospital.city === selectedProvince.name,
+        hospital => hospital.city === selectedProvince,
       );
     }
 
     // Filter theo xã phường
     if (selectedWard) {
-      filtered = filtered.filter(
-        hospital => hospital.ward === selectedWard.name,
-      );
+      filtered = filtered.filter(hospital => hospital.ward === selectedWard);
     }
 
     setFilteredHospitals(filtered);
-  }, [searchText, selectedProvince, selectedWard]);
+  }, [
+    allHospitals,
+    searchText,
+    selectedProvince,
+    selectedWard,
+    hospitalsByAddress,
+  ]);
 
   // Function để tìm bệnh viện gần nhất
   const findNearbyHospitals = () => {
@@ -975,7 +375,7 @@ const BookAppointmentScreen = () => {
       return;
     }
 
-    const hospitalsWithDistance = hospitals.map(hospital => ({
+    const hospitalsWithDistance = allHospitals.map(hospital => ({
       ...hospital,
       distance:
         hospital.latitude && hospital.longitude
@@ -1000,7 +400,7 @@ const BookAppointmentScreen = () => {
 
   // Function để filter bác sĩ
   const filterDoctors = useCallback(() => {
-    let filtered = doctors;
+    let filtered = selectedHospital?.Doctors || [];
 
     // Filter theo bệnh viện đã chọn
     if (selectedHospital) {
@@ -1016,13 +416,15 @@ const BookAppointmentScreen = () => {
           doctor.full_name
             .toLowerCase()
             .includes(doctorSearchText.toLowerCase()) ||
-          SpecialtyLabel[doctor.specialty as keyof typeof SpecialtyLabel]
+          SpecialtyLabel[
+            doctor.specialty as unknown as keyof typeof SpecialtyLabel
+          ]
             ?.toLowerCase()
             .includes(doctorSearchText.toLowerCase()),
       );
     }
 
-    setFilteredDoctors(filtered);
+    setFilteredDoctors(filtered as Doctor[]);
   }, [selectedHospital, doctorSearchText]);
 
   // Effect để filter khi có thay đổi
@@ -1046,30 +448,27 @@ const BookAppointmentScreen = () => {
     );
 
     // Filter time slots theo doctor_id và ngày
-    const filtered = timeSlots.filter(slot => {
+    const filtered = dataTimeSlots?.data?.filter(slot => {
       const slotDate = new Date(slot.start_time);
+
       const isSameDate =
         slotDate.getDate() === selectedDateObj.getDate() &&
         slotDate.getMonth() === selectedDateObj.getMonth() &&
         slotDate.getFullYear() === selectedDateObj.getFullYear();
 
-      //   const isSameDoctor = slot.doctor_id === selectedDoctor.doctor_id;
       const isAvailable = !slot.appointment_id; // Chưa có appointment
 
       return isSameDate && isAvailable;
     });
 
-    console.log(filtered);
-
     // Sort theo thời gian
-    filtered.sort(
+    filtered?.sort(
       (a, b) =>
         new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
     );
 
-    setAvailableTimeSlots(filtered);
-  }, [selectedDoctor, selectedDate]);
-
+    setAvailableTimeSlots(filtered || []);
+  }, [selectedDoctor, selectedDate, dataTimeSlots]);
   // Effect để filter bác sĩ khi có thay đổi
   useEffect(() => {
     filterDoctors();
@@ -1114,24 +513,75 @@ const BookAppointmentScreen = () => {
     }
   };
 
-  const handleBookAppointment = () => {
-    const timeDisplay = selectedTimeSlot
-      ? formatTimeDisplay(
-          selectedTimeSlot.start_time,
-          selectedTimeSlot.end_time,
-        )
-      : 'Chưa chọn giờ';
+  const handleBookAppointment = async () => {
+    // Validate dữ liệu trước khi gửi
+    if (!selectedPatient?.patientId) {
+      Alert.alert('Lỗi', 'Vui lòng chọn bệnh nhân');
+      return;
+    }
+    if (!selectedDoctor?.doctor_id) {
+      Alert.alert('Lỗi', 'Vui lòng chọn bác sĩ');
+      return;
+    }
+    if (!selectedHospital?.hospital_id) {
+      Alert.alert('Lỗi', 'Vui lòng chọn bệnh viện');
+      return;
+    }
+    if (!selectedTimeSlot?.slot_id) {
+      Alert.alert('Lỗi', 'Vui lòng chọn giờ khám');
+      return;
+    }
+    if (!selectedService) {
+      Alert.alert('Lỗi', 'Vui lòng chọn dịch vụ khám');
+      return;
+    }
+    if (!userId) {
+      Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng');
+      return;
+    }
 
-    Alert.alert(
-      'Đặt lịch thành công!',
-      `Bạn đã đặt lịch khám với ${selectedDoctor?.full_name} tại ${selectedHospital?.name} vào ${selectedDate} lúc ${timeDisplay}`,
-      [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ],
-    );
+    // Tạo order_items từ service đã chọn
+    const orderItems = [
+      {
+        service_id: selectedService.service_id,
+        item_name: selectedService.name,
+        quantity: 1,
+        price: selectedService.price,
+      },
+    ];
+
+    const request: BookingRequest = {
+      patient_id: selectedPatient.patientId,
+      doctor_id: selectedDoctor.doctor_id,
+      hospital_id: selectedHospital.hospital_id,
+      slot_ids: [selectedTimeSlot.slot_id],
+      book_user_id: userId,
+      notes: '',
+      order_items: orderItems,
+      payment_status: selectedPaymentMethod === 'cash' ? 'PENDING' : 'PAID',
+    };
+    // Gọi mutation
+    createBooking(request);
+    // --- Gửi hóa đơn điện tử ---
+    try {
+      const body: SendAppointmentConfirmationRequest = {
+        to_email: selectedPatient.email || '',
+        patient_name: selectedPatient.fullName || '',
+        doctor_name: selectedDoctor.full_name,
+        appointment_time: formatTimeDisplay(
+          selectedTimeSlot.start_time || '',
+          selectedTimeSlot.end_time || '',
+        ),
+        appointment_date: selectedDate,
+        order_items: orderItems,
+        appointment_code: Date.now().toString(),
+      };
+
+      await SendEmailApi.sendAppointmentConfirmation(body);
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Có lỗi xảy ra khi gửi hóa đơn.');
+    }
   };
 
   const renderStepIndicator = () => {
@@ -1229,7 +679,7 @@ const BookAppointmentScreen = () => {
               color={Colors.primaryBlue}
             />
             <Text style={styles.filterButtonText}>
-              {selectedProvince ? selectedProvince.name : 'Tỉnh thành'}
+              {selectedProvince ? selectedProvince : 'Tỉnh thành'}
             </Text>
             <Ionicons
               name="chevron-down"
@@ -1254,7 +704,7 @@ const BookAppointmentScreen = () => {
                 !selectedProvince && styles.disabledText,
               ]}
             >
-              {selectedWard ? selectedWard.name : 'Xã phường'}
+              {selectedWard ? selectedWard : 'Xã phường'}
             </Text>
             <Ionicons
               name="chevron-down"
@@ -1283,7 +733,7 @@ const BookAppointmentScreen = () => {
               setSearchText('');
               setSelectedProvince(null);
               setSelectedWard(null);
-              setFilteredHospitals(hospitals);
+              setFilteredHospitals(allHospitals as Hospital[]);
             }}
           >
             <Ionicons
@@ -1413,7 +863,7 @@ const BookAppointmentScreen = () => {
                 <Text style={styles.doctorName}>{doctor.full_name}</Text>
                 <Text style={styles.doctorSpecialty}>
                   {SpecialtyLabel?.[
-                    doctor.specialty as keyof typeof SpecialtyLabel
+                    doctor.specialty as unknown as keyof typeof SpecialtyLabel
                   ] ?? 'Chuyên khoa khác'}
                 </Text>
                 <View style={styles.doctorDetails}>
@@ -1451,31 +901,44 @@ const BookAppointmentScreen = () => {
     <View style={styles.content}>
       <Text style={styles.title}>Chọn dịch vụ khám</Text>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {services.map(service => (
-          <TouchableOpacity
-            key={service.service_id}
-            style={[
-              styles.serviceCard,
-              selectedService?.service_id === service.service_id &&
-                styles.selectedCard,
-            ]}
-            onPress={() => setSelectedService(service)}
-          >
-            <View style={styles.serviceInfo}>
-              <Text style={styles.serviceName}>{service.name}</Text>
-              <Text style={styles.servicePrice}>
-                {service.price} - {service.duration} phút
-              </Text>
-            </View>
-            {selectedService?.service_id === service.service_id && (
-              <Ionicons
-                name="checkmark-circle"
-                size={24}
-                color={Colors.primaryBlue}
-              />
-            )}
-          </TouchableOpacity>
-        ))}
+        {dataServices?.data?.length && dataServices?.data?.length > 0 ? (
+          <>
+            {dataServices?.data?.map((service, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.serviceCard,
+                  selectedService?.service_id === service.service_id &&
+                    styles.selectedCard,
+                ]}
+                onPress={() => setSelectedService(service)}
+              >
+                <View style={styles.serviceInfo}>
+                  <Text style={styles.serviceName}>{service.name}</Text>
+                  <Text style={styles.servicePrice}>
+                    {service.price.toLocaleString('vi-VN')} VNĐ -{' '}
+                    {service.duration} phút
+                  </Text>
+                </View>
+                {selectedService?.service_id === service.service_id && (
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={24}
+                    color={Colors.primaryBlue}
+                  />
+                )}
+              </TouchableOpacity>
+            ))}
+          </>
+        ) : (
+          <View style={styles.noResultsContainer}>
+            <Ionicons name="search-outline" size={48} color={Colors.textGray} />
+            <Text style={styles.noResultsText}>
+              Không tìm thấy dịch vụ khám nào
+            </Text>
+            <Text style={styles.noResultsSubtext}>Thử thay đổi bác sĩ</Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -1676,7 +1139,7 @@ const BookAppointmentScreen = () => {
                         styles.detailInput,
                         patientErrors.full_name && styles.errorInput,
                       ]}
-                      value={currentPatient?.full_name || ''}
+                      value={currentPatient?.fullName || ''}
                       onChangeText={text =>
                         handlePatientInputChange('full_name', text)
                       }
@@ -1685,7 +1148,7 @@ const BookAppointmentScreen = () => {
                     />
                   ) : (
                     <Text style={styles.detailValue}>
-                      {currentPatient?.full_name || ''}
+                      {currentPatient?.fullName || ''}
                     </Text>
                   )}
                   {patientErrors.full_name && (
@@ -1708,7 +1171,9 @@ const BookAppointmentScreen = () => {
                 <View style={styles.detailInfo}>
                   <Text style={styles.detailLabel}>Giới tính</Text>
                   <Text style={styles.detailValue}>
-                    {currentPatient ? formatGender(currentPatient.gender) : ''}
+                    {currentPatient
+                      ? formatGender(currentPatient.gender as 'male' | 'female')
+                      : ''}
                   </Text>
                 </View>
               </View>
@@ -1726,7 +1191,7 @@ const BookAppointmentScreen = () => {
                   <Text style={styles.detailLabel}>Ngày sinh</Text>
                   <Text style={styles.detailValue}>
                     {currentPatient
-                      ? formatDateOfBirth(currentPatient.dob)
+                      ? formatDateOfBirth(currentPatient.dob || '')
                       : ''}
                   </Text>
                 </View>
@@ -1921,7 +1386,7 @@ const BookAppointmentScreen = () => {
           <View style={styles.confirmationItem}>
             <Text style={styles.confirmationLabel}>Bệnh nhân:</Text>
             <Text style={styles.confirmationValue}>
-              {selectedPatient?.full_name}
+              {selectedPatient?.fullName}
             </Text>
           </View>
 
@@ -2097,13 +1562,12 @@ const BookAppointmentScreen = () => {
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalContent}>
-            {provinces.map(province => (
+            {provinces?.data?.map((province, index) => (
               <TouchableOpacity
-                key={province.id}
+                key={index}
                 style={[
                   styles.modalItem,
-                  selectedProvince?.id === province.id &&
-                    styles.selectedModalItem,
+                  selectedProvince === province && styles.selectedModalItem,
                 ]}
                 onPress={() => {
                   setSelectedProvince(province);
@@ -2114,13 +1578,13 @@ const BookAppointmentScreen = () => {
                 <Text
                   style={[
                     styles.modalItemText,
-                    selectedProvince?.id === province.id &&
+                    selectedProvince === province &&
                       styles.selectedModalItemText,
                   ]}
                 >
-                  {province.name}
+                  {province}
                 </Text>
-                {selectedProvince?.id === province.id && (
+                {selectedProvince === province && (
                   <Ionicons
                     name="checkmark"
                     size={20}
@@ -2153,12 +1617,12 @@ const BookAppointmentScreen = () => {
           </View>
           <ScrollView style={styles.modalContent}>
             {selectedProvince &&
-              wards[selectedProvince.id as keyof typeof wards]?.map(ward => (
+              wards?.data?.map((ward, index) => (
                 <TouchableOpacity
-                  key={ward.id}
+                  key={index}
                   style={[
                     styles.modalItem,
-                    selectedWard?.id === ward.id && styles.selectedModalItem,
+                    selectedWard === ward && styles.selectedModalItem,
                   ]}
                   onPress={() => {
                     setSelectedWard(ward);
@@ -2169,15 +1633,14 @@ const BookAppointmentScreen = () => {
                     <Text
                       style={[
                         styles.modalItemText,
-                        selectedWard?.id === ward.id &&
-                          styles.selectedModalItemText,
+                        selectedWard === ward && styles.selectedModalItemText,
                       ]}
                     >
-                      {ward.name}
+                      {ward}
                     </Text>
-                    <Text style={styles.modalItemSubtext}>{ward.district}</Text>
+                    <Text style={styles.modalItemSubtext}>{ward}</Text>
                   </View>
-                  {selectedWard?.id === ward.id && (
+                  {selectedWard === ward && (
                     <Ionicons
                       name="checkmark"
                       size={20}
@@ -2229,6 +1692,42 @@ const BookAppointmentScreen = () => {
     }
   };
 
+  // Render loading state
+  if (isLoadingHospitals) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primaryBlue} />
+          <Text style={styles.loadingText}>Đang tải dữ liệu bệnh viện...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Render error state
+  if (isErrorHospitals) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <View style={styles.errorContainer}>
+          <Ionicons name="warning-outline" size={64} color="#FF6B6B" />
+          <Text style={styles.errorTitle}>Lỗi tải dữ liệu</Text>
+          <Text style={styles.errorMessage}>
+            {hospitalsError?.message ||
+              'Không thể tải danh sách bệnh viện. Vui lòng thử lại sau.'}
+          </Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => refetchHospitals()}
+          >
+            <Text style={styles.retryButtonText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -2259,7 +1758,9 @@ const BookAppointmentScreen = () => {
             style={styles.bookButton}
             onPress={handleBookAppointment}
           >
-            <Text style={styles.bookButtonText}>Đặt lịch ngay</Text>
+            <Text style={styles.bookButtonText}>
+              {isPending ? 'Đang đặt lịch...' : 'Đặt lịch ngay'}
+            </Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -3065,6 +2566,48 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textGray,
     lineHeight: 18,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: Colors.textGray,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: Colors.textDark,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: Colors.textGray,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  retryButton: {
+    backgroundColor: Colors.primaryBlue,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
