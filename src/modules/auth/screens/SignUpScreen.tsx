@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
+import { useRegisterMutation } from '../hooks/mutations/use-register.mutation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface SignUpScreenProps {
   navigation: any;
@@ -30,18 +32,85 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSignUp = () => {
-    // if (!username || !email || !password || !confirmPassword) {
-    //   Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ thông tin');
-    //   return;
-    // }
-    // if (password !== confirmPassword) {
-    //   Alert.alert('Lỗi', 'Mật khẩu xác nhận không khớp');
-    //   return;
-    // }
-    // Alert.alert('Đăng ký', `Tạo tài khoản cho ${username} - ${email}`);
-    navigation.navigate("CompleteProfile");
+  const registerMutation = useRegisterMutation({
+    onSuccess: data => {
+      AsyncStorage.setItem('email', email);
+      AsyncStorage.setItem('user_id', data.data?.id || '');
+      Alert.alert(
+        'Đăng ký thành công! Vui lòng hoàn thành hồ sơ bệnh nhân của bạn.',
+      );
+      navigation.navigate('CompleteProfile');
+    },
+    onError: (error: any) => {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Đăng ký thất bại. Vui lòng thử lại.';
+      Alert.alert(message);
+    },
+  });
+
+  const validateForm = () => {
+    if (!username || !email || !password || !confirmPassword) {
+      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ thông tin.');
+      return false;
+    }
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      Alert.alert('Lỗi', 'Email không hợp lệ.');
+      return false;
+    }
+    if (password.length < 8) {
+      Alert.alert('Lỗi', 'Mật khẩu phải có ít nhất 8 ký tự.');
+      return false;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert('Lỗi', 'Mật khẩu xác nhận không khớp.');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSignUp = async () => {
+    if (!validateForm()) return;
+    setLoading(true);
+    let firebaseUser = 'ABCSxyaxzacsavad';
+
+    try {
+      // 2️⃣ Gọi API backend để lưu user
+      await registerMutation.mutateAsync({
+        username,
+        email,
+        password,
+        firebase_uid: firebaseUser,
+      });
+
+      Alert.alert(
+        'Thành công',
+        'Đăng ký thành công! Hãy hoàn thành hồ sơ bệnh nhân.',
+      );
+      navigation.navigate('CompleteProfile');
+    } catch (err: any) {
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        (err as { code?: string }).code === 'auth/email-already-in-use'
+      ) {
+        Alert.alert('Email is already in use.');
+        return;
+      }
+      if (firebaseUser) {
+        try {
+          // await deleteUser(firebaseUser);
+        } catch (delError) {
+          console.error('Failed to delete Firebase user:', delError);
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -137,9 +206,13 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
       <TouchableOpacity
         style={styles.signUpButton}
         onPress={handleSignUp}
-        disabled={!username || !email || !password || !confirmPassword}
+        disabled={
+          !username || !email || !password || !confirmPassword || loading
+        }
       >
-        <Text style={styles.signUpButtonText}>Register</Text>
+        <Text style={styles.signUpButtonText}>
+          {loading ? 'Processing...' : 'Register'}
+        </Text>
       </TouchableOpacity>
 
       {/* Already have account */}

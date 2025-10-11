@@ -1,4 +1,4 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 type PatientInfo = {
   patientId: string | null;
@@ -28,7 +28,7 @@ const initialState: AuthState = {
 };
 
 const authSlice = createSlice({
-  name: "auth",
+  name: 'auth',
   initialState,
   reducers: {
     setTokens: (
@@ -48,7 +48,7 @@ const authSlice = createSlice({
     setPatient: (state, action: PayloadAction<PatientInfo>) => {
       state.patient = action.payload;
     },
-    clearTokens: (state) => {
+    clearTokens: state => {
       state.accessToken = null;
       state.refreshToken = null;
       state.userId = null;
