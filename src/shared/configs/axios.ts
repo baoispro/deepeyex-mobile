@@ -21,13 +21,51 @@ api.interceptors.request.use(config => {
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // ✅ DEBUG: Log request details
+  console.log('🌐 API REQUEST:', {
+    method: config.method?.toUpperCase(),
+    url: config.url,
+    baseURL: config.baseURL,
+    fullURL: `${config.baseURL}${config.url}`,
+    headers: config.headers,
+    data:
+      config.data instanceof FormData
+        ? 'FormData (see details below)'
+        : config.data,
+  });
+
+  // ✅ DEBUG: Log FormData contents (if applicable)
+  if (config.data instanceof FormData) {
+    console.log('📦 FormData contents:');
+    // Note: FormData không thể iterate trực tiếp trong React Native
+    // Nhưng log này giúp biết là đang gửi FormData
+  }
+
   return config;
 });
 
 // ---------------------- Response Interceptor ----------------------
 api.interceptors.response.use(
-  response => response,
+  response => {
+    // ✅ DEBUG: Log successful response
+    console.log('✅ API RESPONSE:', {
+      status: response.status,
+      statusText: response.statusText,
+      url: response.config.url,
+      data: response.data,
+    });
+    return response;
+  },
   async error => {
+    // ✅ DEBUG: Log error response
+    console.error('❌ API ERROR:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      errorData: error.response?.data,
+      errorMessage: error.message,
+    });
     const originalRequest = error.config;
 
     // ✅ nếu token hết hạn (401), thử refresh 1 lần
@@ -57,7 +95,7 @@ api.interceptors.response.use(
         // ❌ Refresh thất bại → logout + chuyển về login
         const navigate = useNavigation();
         store.dispatch(clearTokens());
-        navigate.navigate('Login');
+        navigate.navigate('Login' as never);
       }
     }
 

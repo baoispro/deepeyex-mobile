@@ -1,8 +1,12 @@
-import { AxiosInstance } from "axios";
-import { ListTimeSlotsByDateResponse, ListTimeSlotsByMonthResponse } from "../../types/response";
-import api from "../../../../shared/configs/axios";
+import { AxiosInstance } from 'axios';
+import {
+  ListTimeSlotsByDateResponse,
+  ListTimeSlotsByDoctorIdResponse,
+  ListTimeSlotsByMonthResponse,
+} from '../../types/response';
+import api from '../../../../shared/configs/axios';
 
-const endpoint = "/hospital/timeslots";
+const endpoint = '/hospital/timeslots';
 
 class TimeSlotClient {
   private readonly client: AxiosInstance;
@@ -12,7 +16,10 @@ class TimeSlotClient {
   }
 
   // ---------------- Get TimeSlots By Doctor And Date ----------------
-  async getByDoctorAndDate(doctorId: string, date: string): Promise<ListTimeSlotsByDateResponse> {
+  async getByDoctorAndDate(
+    doctorId: string,
+    date: string,
+  ): Promise<ListTimeSlotsByDateResponse> {
     const response = await this.client.get<ListTimeSlotsByDateResponse>(
       `${endpoint}/doctor/${doctorId}/date`,
       {
@@ -32,6 +39,16 @@ class TimeSlotClient {
       {
         params: { month }, // format YYYY-MM
       },
+    );
+    return response.data;
+  }
+
+  // ---------------- Get TimeSlots By Doctor Id ----------------
+  async getByDoctorId(
+    doctorId: string,
+  ): Promise<ListTimeSlotsByDoctorIdResponse> {
+    const response = await this.client.get<ListTimeSlotsByDoctorIdResponse>(
+      `${endpoint}/doctor/${doctorId}`,
     );
     return response.data;
   }

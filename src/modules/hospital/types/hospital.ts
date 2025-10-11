@@ -1,4 +1,4 @@
-import { Doctor } from "./doctor";
+import { Doctor } from './doctor';
 
 export type Hospital = {
   hospital_id: string;
@@ -9,9 +9,11 @@ export type Hospital = {
   image: string;
   created_at: string;
   updated_at: string;
-  Doctors?: Doctor[];
+  Doctors?: Doctor[] | null;
   slug: string;
   url_map: string;
   ward: string;
   city: string;
+  latitude?: number;
+  longitude?: number;
 };

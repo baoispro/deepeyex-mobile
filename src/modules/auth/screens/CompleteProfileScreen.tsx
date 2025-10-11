@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,18 @@ import {
   StyleSheet,
   ScrollView,
   Image,
+  Alert,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { Dropdown } from 'react-native-element-dropdown';
+import { useCreatePatientMutation } from '../../hospital/hooks/mutations/patients/use-create-patient.mutation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useDispatch } from 'react-redux';
+import { setPatient } from '../../../shared/stores/authSlice';
+import { useAppSelector } from '../../../shared/stores';
+import { Gender } from '../../hospital/enums/gender';
+import { CreatePatientRequest } from '../../hospital/apis/patient/patientApi';
 
 const CompleteProfileScreen = () => {
   const navigation = useNavigation();
@@ -18,15 +26,69 @@ const CompleteProfileScreen = () => {
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [dob, setDob] = useState('');
-  const [gender, setGender] = useState('');
+  const [gender, setGender] = useState<Gender | null>(null);
   const [isGenderFocus, setIsGenderFocus] = useState(false);
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [userId, setUserId] = useState('');
+  const dispatch = useDispatch();
+  const accessToken = useAppSelector(state => state.auth.accessToken);
+
+  useEffect(() => {
+    const fetchUserId = async () => {
+      try {
+        const storedId = await AsyncStorage.getItem('user_id');
+        const storedEmail = await AsyncStorage.getItem('email');
+        if (storedId) {
+          setUserId(storedId);
+          setEmail(storedEmail || '');
+        } else {
+          console.warn('Chưa có user_id trong AsyncStorage');
+        }
+      } catch (error) {
+        console.error('Lỗi khi lấy user_id:', error);
+      }
+    };
+
+    fetchUserId();
+  }, []);
+  const createPatientMutation = useCreatePatientMutation({
+    onSuccess: res => {
+      AsyncStorage.removeItem('email');
+      AsyncStorage.removeItem('user_id');
+      Alert.alert('Thành công', 'Thông tin bệnh nhân được tạo thành công!');
+      dispatch(
+        setPatient({
+          patientId: res.data?.patient_id ?? null,
+          fullName: res.data?.full_name ?? null,
+          dob: res.data?.dob ?? null,
+          gender: res.data?.gender ?? null,
+          phone: res.data?.phone ?? null,
+          address: res.data?.address ?? null,
+          email: res.data?.email ?? null,
+          image: res.data?.image ?? null,
+        }),
+      );
+      if (!accessToken || accessToken === '') {
+        navigation.navigate('Login' as never);
+      } else {
+        navigation.navigate('Home' as never);
+      }
+    },
+    onError: (error: any) => {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Tạo thông tin bệnh nhân thất bại.';
+
+      Alert.alert('Lỗi', errorMessage);
+    },
+  });
 
   const genderData = [
-    { label: 'Nam', value: 'Nam' },
-    { label: 'Nữ', value: 'Nữ' },
+    { label: 'Nam', value: Gender.Male },
+    { label: 'Nữ', value: Gender.Female },
   ];
 
   const handlePickImage = async () => {
@@ -43,24 +105,84 @@ const CompleteProfileScreen = () => {
     }
   };
 
-  const handleComplete = () => {
-    console.log({
-      email,
-      fullName,
-      dob,
-      gender,
+  const handleComplete = async () => {
+    // ✅ VALIDATION
+    if (!userId) {
+      Alert.alert('Lỗi', 'Không tìm thấy user ID. Vui lòng đăng nhập lại.');
+      return;
+    }
+
+    if (!fullName.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập họ tên.');
+      return;
+    }
+
+    if (!dob.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập ngày sinh.');
+      return;
+    }
+
+    if (!gender) {
+      Alert.alert('Lỗi', 'Vui lòng chọn giới tính.');
+      return;
+    }
+
+    if (!phone.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại.');
+      return;
+    }
+
+    if (!address.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập địa chỉ.');
+      return;
+    }
+
+    // ✅ FORMAT DOB: Convert từ mm/dd/yyyy sang YYYY-MM-DD
+    const dobParts = dob.split('/');
+    let formattedDob = dob;
+
+    if (dobParts.length === 3) {
+      const [month, day, year] = dobParts;
+      formattedDob = `${year}-${month.padStart(2, '0')}-${day.padStart(
+        2,
+        '0',
+      )}`;
+    }
+
+    // ✅ PREPARE FORM DATA
+    const formData: CreatePatientRequest = {
+      user_id: userId,
+      full_name: fullName,
+      dob: formattedDob,
+      gender: gender,
       phone,
       address,
-      avatar,
-    });
-    navigation.navigate('Home' as never);
+      email,
+    };
+
+    if (avatar) {
+      // Note: Trong React Native, FormData sẽ tự động handle uri
+      // Nên ta pass object với uri, type và name
+      formData.avatar = {
+        uri: avatar,
+        type: 'image/jpeg',
+        name: 'avatar.jpg',
+      } as any;
+    }
+
+    try {
+      await createPatientMutation.mutateAsync(formData);
+    } catch (error) {
+      console.error('❌ CATCH ERROR:', error);
+    }
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Chỉ còn vài bước nữa thôi!</Text>
       <Text style={styles.subtitle}>
-        Vui lòng điền thông tin bên dưới để hoàn tất hồ sơ và bắt đầu sử dụng dịch vụ.
+        Vui lòng điền thông tin bên dưới để hoàn tất hồ sơ và bắt đầu sử dụng
+        dịch vụ.
       </Text>
 
       {/* Email */}
@@ -101,9 +223,10 @@ const CompleteProfileScreen = () => {
       <Text style={styles.label}>Ngày sinh</Text>
       <TextInput
         style={styles.input}
-        placeholder="mm/dd/yyyy"
+        placeholder="mm/dd/yyyy (VD: 01/15/1990)"
         value={dob}
         onChangeText={setDob}
+        keyboardType="numeric"
       />
 
       {/* Gender */}
@@ -144,8 +267,17 @@ const CompleteProfileScreen = () => {
         onChangeText={setAddress}
       />
 
-      <TouchableOpacity style={styles.button} onPress={handleComplete}>
-        <Text style={styles.buttonText}>Hoàn tất hồ sơ</Text>
+      <TouchableOpacity
+        style={[
+          styles.button,
+          createPatientMutation.isPending && styles.buttonDisabled,
+        ]}
+        onPress={handleComplete}
+        disabled={createPatientMutation.isPending}
+      >
+        <Text style={styles.buttonText}>
+          {createPatientMutation.isPending ? 'Đang xử lý...' : 'Hoàn tất hồ sơ'}
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -234,6 +366,9 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 8,
     marginTop: 20,
+  },
+  buttonDisabled: {
+    backgroundColor: '#ccc',
   },
   buttonText: {
     color: '#fff',
