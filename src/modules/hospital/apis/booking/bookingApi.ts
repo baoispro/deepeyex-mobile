@@ -11,6 +11,7 @@ export interface BookingRequest {
   notes?: string;
   order_items: OrderItemRequest[];
   payment_status: 'PENDING' | 'PAID' | 'CANCELED' | 'DELIVERED';
+  service_name: string;
 }
 
 export interface OrderItemRequest {

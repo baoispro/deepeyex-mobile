@@ -31,6 +31,10 @@ import {
   SendAppointmentConfirmationRequest,
   SendEmailApi,
 } from '../../hospital/apis/sendmail/sendMailApi';
+import { useCreateVnpayPaymentMutation } from '../../hospital/hooks/mutations/vnpay/use-vnpay-payment.mutation';
+import VNPayWebView from '../../hospital/components/VNPayWebView';
+import PaymentConfirmationComponent from '../components/PaymentConfirmationComponent';
+import BookingSummaryComponent from '../components/BookingSummaryComponent';
 
 const { width } = Dimensions.get('window');
 
@@ -158,6 +162,13 @@ const BookAppointmentScreen = () => {
   const [requestEInvoice, setRequestEInvoice] = useState<boolean>(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<string>('cash');
+
+  // VNPay WebView states
+  const [showVNPayWebView, setShowVNPayWebView] = useState(false);
+  const [vnpayPaymentUrl, setVnpayPaymentUrl] = useState('');
+  const [_pendingBookingId, setPendingBookingId] = useState<string>('');
+  const [pendingEmailData, setPendingEmailData] =
+    useState<SendAppointmentConfirmationRequest | null>(null);
 
   // Helper function để format time
   const formatTimeDisplay = (startTime: string, endTime: string) => {
@@ -298,8 +309,143 @@ const BookAppointmentScreen = () => {
     selectedDoctor?.doctor_id || '',
   );
 
+  // VNPay mutation
+  const { mutate: createVnpayPayment, isPending: isVnpayPending } =
+    useCreateVnpayPaymentMutation({
+      onSuccess: async response => {
+        if (response.status === 200 && response.data?.paymentUrl) {
+          setVnpayPaymentUrl(response.data.paymentUrl);
+          setShowVNPayWebView(true);
+        } else {
+          Alert.alert('Lỗi', 'Không thể tạo URL thanh toán VNPay');
+        }
+      },
+      onError: error => {
+        console.error('Error creating VNPay payment:', error);
+        Alert.alert('Lỗi', 'Có lỗi xảy ra khi tạo thanh toán VNPay');
+      },
+    });
+
+  // Handle VNPay payment success
+  const handleVNPaySuccess = async (bookingId: string) => {
+    setShowVNPayWebView(false);
+
+    try {
+      // Gửi email xác nhận sau khi thanh toán VNPay thành công
+      if (pendingEmailData) {
+        try {
+          const emailData: SendAppointmentConfirmationRequest = {
+            ...pendingEmailData,
+            appointment_code: bookingId,
+          };
+          await SendEmailApi.sendAppointmentConfirmation(emailData);
+
+          Alert.alert(
+            'Thanh toán thành công',
+            'Đặt lịch khám của bạn đã được thanh toán thành công! Thông tin đã được gửi tới email của bạn.',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  setPendingEmailData(null);
+                  navigation.goBack();
+                },
+              },
+            ],
+          );
+        } catch (emailError) {
+          console.error('Error sending email:', emailError);
+          Alert.alert(
+            'Thanh toán thành công',
+            'Đặt lịch khám thành công nhưng có lỗi khi gửi email xác nhận.',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  setPendingEmailData(null);
+                  navigation.goBack();
+                },
+              },
+            ],
+          );
+        }
+      } else {
+        Alert.alert(
+          'Thanh toán thành công',
+          'Đặt lịch khám của bạn đã được thanh toán thành công!',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.goBack(),
+            },
+          ],
+        );
+      }
+    } catch (error) {
+      console.error('Error in handleVNPaySuccess:', error);
+      Alert.alert(
+        'Thanh toán thành công',
+        'Đặt lịch khám đã được thanh toán nhưng xảy ra lỗi xử lý.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setPendingEmailData(null);
+              navigation.goBack();
+            },
+          },
+        ],
+      );
+    }
+  };
+
+  // Handle VNPay payment error
+  const handleVNPayError = (error: string) => {
+    setShowVNPayWebView(false);
+    Alert.alert('Thanh toán thất bại', error);
+  };
+
+  // Handle close VNPay WebView
+  const handleCloseVNPayWebView = () => {
+    setShowVNPayWebView(false);
+  };
+
   const { mutate: createBooking, isPending } = useCreateBookingMutation({
-    onSuccess: () => {
+    onSuccess: async res => {
+      const bookingId =
+        res.appointment?.appointment_id ||
+        res.order?.order_id ||
+        Date.now().toString();
+      setPendingBookingId(bookingId);
+
+      // Nếu thanh toán bằng ATM/VNPay
+      if (selectedPaymentMethod === 'bank') {
+        try {
+          // Tạo VNPay payment URL
+          createVnpayPayment({
+            amount: selectedService?.price || 0,
+            orderId: bookingId,
+          });
+        } catch (error) {
+          console.error('Error preparing VNPay payment:', error);
+          Alert.alert('Lỗi', 'Có lỗi xảy ra khi chuẩn bị thanh toán VNPay');
+        }
+        return;
+      }
+
+      // Thanh toán COD - gửi email ngay
+      if (pendingEmailData) {
+        try {
+          const emailData: SendAppointmentConfirmationRequest = {
+            ...pendingEmailData,
+            appointment_code: bookingId,
+          };
+          await SendEmailApi.sendAppointmentConfirmation(emailData);
+        } catch (error) {
+          console.error('Error sending email:', error);
+        }
+      }
+
       Alert.alert(
         'Đặt lịch thành công!',
         `Bạn đã đặt lịch khám với ${selectedDoctor?.full_name} tại ${
@@ -311,7 +457,10 @@ const BookAppointmentScreen = () => {
         [
           {
             text: 'OK',
-            onPress: () => navigation.goBack(),
+            onPress: () => {
+              setPendingEmailData(null);
+              navigation.goBack();
+            },
           },
         ],
       );
@@ -327,6 +476,7 @@ const BookAppointmentScreen = () => {
           2,
         )}`,
       );
+      setPendingEmailData(null);
     },
   });
 
@@ -559,29 +709,27 @@ const BookAppointmentScreen = () => {
       notes: '',
       order_items: orderItems,
       payment_status: selectedPaymentMethod === 'cash' ? 'PENDING' : 'PAID',
+      service_name: selectedService.name,
     };
+
+    // Lưu email data để gửi sau
+    const emailData: SendAppointmentConfirmationRequest = {
+      to_email: selectedPatient.email || '',
+      patient_name: selectedPatient.fullName || '',
+      doctor_name: selectedDoctor.full_name,
+      appointment_time: formatTimeDisplay(
+        selectedTimeSlot.start_time || '',
+        selectedTimeSlot.end_time || '',
+      ),
+      appointment_date: selectedDate,
+      order_items: orderItems,
+      appointment_code: '', // Sẽ được cập nhật trong onSuccess
+    };
+
+    setPendingEmailData(emailData);
+
     // Gọi mutation
     createBooking(request);
-    // --- Gửi hóa đơn điện tử ---
-    try {
-      const body: SendAppointmentConfirmationRequest = {
-        to_email: selectedPatient.email || '',
-        patient_name: selectedPatient.fullName || '',
-        doctor_name: selectedDoctor.full_name,
-        appointment_time: formatTimeDisplay(
-          selectedTimeSlot.start_time || '',
-          selectedTimeSlot.end_time || '',
-        ),
-        appointment_date: selectedDate,
-        order_items: orderItems,
-        appointment_code: Date.now().toString(),
-      };
-
-      await SendEmailApi.sendAppointmentConfirmation(body);
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Có lỗi xảy ra khi gửi hóa đơn.');
-    }
   };
 
   const renderStepIndicator = () => {
@@ -1334,216 +1482,58 @@ const BookAppointmentScreen = () => {
     );
   };
 
-  const renderConfirmation = () => (
-    <View style={styles.content}>
-      <Text style={styles.title}>Xác nhận đặt lịch</Text>
+  const renderConfirmation = () => {
+    const summaryItems = [
+      { label: 'Bệnh viện', value: selectedHospital?.name || '' },
+      { label: 'Bác sĩ', value: selectedDoctor?.full_name || '' },
+      { label: 'Dịch vụ', value: selectedService?.name || '' },
+      { label: 'Ngày', value: selectedDate },
+      {
+        label: 'Giờ',
+        value: selectedTimeSlot
+          ? formatTimeDisplay(
+              selectedTimeSlot.start_time,
+              selectedTimeSlot.end_time,
+            )
+          : 'Chưa chọn giờ',
+      },
+      { label: 'Bệnh nhân', value: selectedPatient?.fullName || '' },
+      { label: 'Số điện thoại', value: selectedPatient?.phone || '' },
+      { label: 'Phí khám', value: selectedService?.price || 0 },
+      {
+        label: 'Phương thức thanh toán',
+        value:
+          selectedPaymentMethod === 'cash'
+            ? 'Thanh toán tiền mặt khi nhận hàng'
+            : 'Thanh toán bằng thẻ ATM nội địa và tài khoản ngân hàng',
+      },
+      {
+        label: 'Xuất hóa đơn điện tử',
+        value: requestEInvoice ? 'Có' : 'Không',
+      },
+    ];
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        style={styles.confirmationScrollView}
-      >
-        <View style={styles.confirmationCard}>
-          <Text style={styles.confirmationTitle}>Thông tin đặt lịch</Text>
+    return (
+      <View style={styles.content}>
+        <Text style={styles.title}>Xác nhận đặt lịch</Text>
 
-          <View style={styles.confirmationItem}>
-            <Text style={styles.confirmationLabel}>Bệnh viện:</Text>
-            <Text style={styles.confirmationValue}>
-              {selectedHospital?.name}
-            </Text>
-          </View>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          style={styles.confirmationScrollView}
+        >
+          <BookingSummaryComponent items={summaryItems} colors={Colors} />
 
-          <View style={styles.confirmationItem}>
-            <Text style={styles.confirmationLabel}>Bác sĩ:</Text>
-            <Text style={styles.confirmationValue}>
-              {selectedDoctor?.full_name}
-            </Text>
-          </View>
-
-          <View style={styles.confirmationItem}>
-            <Text style={styles.confirmationLabel}>Dịch vụ:</Text>
-            <Text style={styles.confirmationValue}>
-              {selectedService?.name}
-            </Text>
-          </View>
-
-          <View style={styles.confirmationItem}>
-            <Text style={styles.confirmationLabel}>Ngày:</Text>
-            <Text style={styles.confirmationValue}>{selectedDate}</Text>
-          </View>
-
-          <View style={styles.confirmationItem}>
-            <Text style={styles.confirmationLabel}>Giờ:</Text>
-            <Text style={styles.confirmationValue}>
-              {selectedTimeSlot
-                ? formatTimeDisplay(
-                    selectedTimeSlot.start_time,
-                    selectedTimeSlot.end_time,
-                  )
-                : 'Chưa chọn giờ'}
-            </Text>
-          </View>
-
-          <View style={styles.confirmationItem}>
-            <Text style={styles.confirmationLabel}>Bệnh nhân:</Text>
-            <Text style={styles.confirmationValue}>
-              {selectedPatient?.fullName}
-            </Text>
-          </View>
-
-          <View style={styles.confirmationItem}>
-            <Text style={styles.confirmationLabel}>Số điện thoại:</Text>
-            <Text style={styles.confirmationValue}>
-              {selectedPatient?.phone}
-            </Text>
-          </View>
-
-          <View style={styles.confirmationItem}>
-            <Text style={styles.confirmationLabel}>Phí khám:</Text>
-            <Text style={styles.confirmationValue}>
-              {selectedService?.price}
-            </Text>
-          </View>
-
-          <View style={styles.confirmationItem}>
-            <Text style={styles.confirmationLabel}>
-              Phương thức thanh toán:
-            </Text>
-            <Text style={styles.confirmationValue}>
-              {selectedPaymentMethod === 'cash'
-                ? 'Thanh toán tiền mặt khi nhận hàng'
-                : 'Thanh toán bằng thẻ ATM nội địa và tài khoản ngân hàng'}
-            </Text>
-          </View>
-
-          <View style={styles.confirmationItem}>
-            <Text style={styles.confirmationLabel}>Xuất hóa đơn điện tử:</Text>
-            <Text style={styles.confirmationValue}>
-              {requestEInvoice ? 'Có' : 'Không'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Phương thức thanh toán */}
-        <View style={styles.paymentMethodCard}>
-          <Text style={styles.paymentMethodTitle}>Phương thức thanh toán</Text>
-
-          {/* Xuất hóa đơn điện tử */}
-          <View style={styles.invoiceSection}>
-            <TouchableOpacity
-              style={styles.checkboxContainer}
-              onPress={() => setRequestEInvoice(!requestEInvoice)}
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  requestEInvoice && styles.checkboxChecked,
-                ]}
-              >
-                {requestEInvoice && (
-                  <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                )}
-              </View>
-              <Text style={styles.checkboxLabel}>
-                Yêu cầu xuất hóa đơn điện tử
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Chọn phương thức thanh toán */}
-          <View style={styles.paymentMethodsSection}>
-            <Text style={styles.paymentMethodsTitle}>
-              Chọn phương thức thanh toán:
-            </Text>
-
-            <TouchableOpacity
-              style={[
-                styles.paymentMethodOption,
-                selectedPaymentMethod === 'cash' &&
-                  styles.paymentMethodSelected,
-              ]}
-              onPress={() => setSelectedPaymentMethod('cash')}
-            >
-              <View style={styles.paymentMethodContent}>
-                <Ionicons
-                  name="cash-outline"
-                  size={24}
-                  color={
-                    selectedPaymentMethod === 'cash'
-                      ? Colors.primaryBlue
-                      : Colors.textGray
-                  }
-                />
-                <View style={styles.paymentMethodInfo}>
-                  <Text
-                    style={[
-                      styles.paymentMethodName,
-                      selectedPaymentMethod === 'cash' &&
-                        styles.paymentMethodNameSelected,
-                    ]}
-                  >
-                    Thanh toán tiền mặt khi nhận hàng
-                  </Text>
-                  <Text style={styles.paymentMethodDescription}>
-                    Thanh toán bằng tiền mặt khi đến khám
-                  </Text>
-                </View>
-              </View>
-              {selectedPaymentMethod === 'cash' && (
-                <Ionicons
-                  name="checkmark-circle"
-                  size={24}
-                  color={Colors.primaryBlue}
-                />
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.paymentMethodOption,
-                selectedPaymentMethod === 'bank' &&
-                  styles.paymentMethodSelected,
-              ]}
-              onPress={() => setSelectedPaymentMethod('bank')}
-            >
-              <View style={styles.paymentMethodContent}>
-                <Ionicons
-                  name="card-outline"
-                  size={24}
-                  color={
-                    selectedPaymentMethod === 'bank'
-                      ? Colors.primaryBlue
-                      : Colors.textGray
-                  }
-                />
-                <View style={styles.paymentMethodInfo}>
-                  <Text
-                    style={[
-                      styles.paymentMethodName,
-                      selectedPaymentMethod === 'bank' &&
-                        styles.paymentMethodNameSelected,
-                    ]}
-                  >
-                    Thanh toán bằng thẻ ATM nội địa và tài khoản ngân hàng
-                  </Text>
-                  <Text style={styles.paymentMethodDescription}>
-                    Thanh toán trực tuyến qua thẻ ATM hoặc chuyển khoản ngân
-                    hàng
-                  </Text>
-                </View>
-              </View>
-              {selectedPaymentMethod === 'bank' && (
-                <Ionicons
-                  name="checkmark-circle"
-                  size={24}
-                  color={Colors.primaryBlue}
-                />
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
-    </View>
-  );
+          <PaymentConfirmationComponent
+            requestEInvoice={requestEInvoice}
+            selectedPaymentMethod={selectedPaymentMethod}
+            onToggleEInvoice={() => setRequestEInvoice(!requestEInvoice)}
+            onSelectPaymentMethod={setSelectedPaymentMethod}
+            colors={Colors}
+          />
+        </ScrollView>
+      </View>
+    );
+  };
 
   // Modal chọn tỉnh thành
   const renderProvinceModal = () => (
@@ -1728,6 +1718,19 @@ const BookAppointmentScreen = () => {
     );
   }
 
+  // Show VNPay WebView if needed
+  if (showVNPayWebView) {
+    return (
+      <VNPayWebView
+        paymentUrl={vnpayPaymentUrl}
+        onPaymentSuccess={handleVNPaySuccess}
+        onPaymentError={handleVNPayError}
+        onClose={handleCloseVNPayWebView}
+        colors={Colors}
+      />
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -1755,11 +1758,19 @@ const BookAppointmentScreen = () => {
       <View style={styles.bottomContainer}>
         {currentStep === 'confirmation' ? (
           <TouchableOpacity
-            style={styles.bookButton}
+            style={[
+              styles.bookButton,
+              (isPending || isVnpayPending) && styles.nextButtonDisabled,
+            ]}
             onPress={handleBookAppointment}
+            disabled={isPending || isVnpayPending}
           >
             <Text style={styles.bookButtonText}>
-              {isPending ? 'Đang đặt lịch...' : 'Đặt lịch ngay'}
+              {isPending || isVnpayPending
+                ? 'Đang xử lý...'
+                : selectedPaymentMethod === 'bank'
+                ? 'Thanh toán VNPay'
+                : 'Đặt lịch ngay'}
             </Text>
           </TouchableOpacity>
         ) : (

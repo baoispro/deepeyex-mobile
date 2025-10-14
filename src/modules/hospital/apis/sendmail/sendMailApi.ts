@@ -1,5 +1,6 @@
 import { AxiosInstance } from 'axios';
 import api from '../../../../shared/configs/axios';
+import { OrderItemRequest } from '../order/orderApi';
 
 // ---------- Types ----------
 export interface OrderItem {
@@ -41,6 +42,23 @@ export interface SendPrescriptionRequest {
   prescription_details: string;
 }
 
+export interface SendOrderConfirmationRequest {
+  to_email: string;
+  patient_name: string;
+  order_code: string;
+  order_items: OrderItemRequest[];
+  delivery_method: string;
+  delivery_address: string;
+  delivery_phone: string;
+  delivery_fullname: string;
+  delivery_email: string;
+  delivery_note: string;
+  delivery_fee: number;
+  delivery_city: string;
+  delivery_district: string;
+  delivery_ward: string;
+}
+
 // ---------- Client ----------
 class EmailClient {
   private readonly client: AxiosInstance;
@@ -78,6 +96,15 @@ class EmailClient {
   // 💊 Gửi email đơn thuốc
   async sendPrescription(payload: SendPrescriptionRequest) {
     const response = await this.client.post('/emails/prescription', payload);
+    return response.data;
+  }
+
+  // 📦 Gửi email đơn hàng
+  async sendOrderConfirmation(payload: SendOrderConfirmationRequest) {
+    const response = await this.client.post(
+      '/hospital/emails/order-confirmation',
+      payload,
+    );
     return response.data;
   }
 }

@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../shared/stores';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useCart } from '../../../shared/hooks/useCart';
 
 const { width } = Dimensions.get('window');
 
@@ -127,6 +128,7 @@ const HomeScreen = () => {
   const { accessToken, patient } = useSelector(
     (state: RootState) => state.auth,
   );
+  const { totalItems } = useCart();
   const isLoggedIn = !!accessToken;
   const navigation = useNavigation();
 
@@ -194,20 +196,24 @@ const HomeScreen = () => {
           </View>
 
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.headerIcon}>
-              <Ionicons
-                name="notifications-outline" // chuông
-                size={24}
-                color="#000"
-              />
+            <TouchableOpacity
+              style={styles.headerIcon}
+              onPress={() => navigation.navigate('Cart')}
+            >
+              <Ionicons name="cart-outline" size={24} color="#000" />
+              {totalItems > 0 && (
+                <View style={styles.cartBadge}>
+                  <Text style={styles.cartBadgeText}>{totalItems}</Text>
+                </View>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.headerIcon}>
-              <Ionicons
-                name="settings-outline" // cài đặt
-                size={24}
-                color="#000"
-              />
+              <Ionicons name="notifications-outline" size={24} color="#000" />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.headerIcon}>
+              <Ionicons name="settings-outline" size={24} color="#000" />
             </TouchableOpacity>
           </View>
         </View>
@@ -373,6 +379,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+  },
+  cartBadge: {
+    position: 'absolute',
+    right: -5,
+    top: -5,
+    backgroundColor: '#dc3545',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cartBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   iconText: { fontSize: 20, color: '#666' },
   profileImagePlaceholder: {
