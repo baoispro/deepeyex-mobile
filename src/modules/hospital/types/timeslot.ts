@@ -3,5 +3,8 @@ export type TimeSlot = {
   doctor_id: string;
   start_time: string; // ISO datetime
   end_time: string; // ISO datetime
-  is_booked: boolean;
+  capacity: number;
+  created_at: string;
+  updated_at: string;
+  appointment_id?: string;
 };

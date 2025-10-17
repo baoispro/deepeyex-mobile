@@ -57,7 +57,7 @@ api.interceptors.response.use(
         // ❌ Refresh thất bại → logout + chuyển về login
         const navigate = useNavigation();
         store.dispatch(clearTokens());
-        navigate.navigate('Login');
+        navigate.navigate('Login' as never);
       }
     }
 

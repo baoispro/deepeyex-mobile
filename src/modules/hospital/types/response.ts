@@ -4,6 +4,7 @@ import { Doctor } from './doctor';
 import { TimeSlot } from './timeslot';
 import { Drug } from './drug';
 import { ApiResponse } from '../../../shared/types/response';
+import { Service } from './service';
 
 type GetPatientResponse = ApiResponse<Patient>;
 
@@ -28,10 +29,14 @@ type ListDoctorsByHospitalResponse = ApiResponse<Doctor[]>;
 // Time Slot
 type ListTimeSlotsByDateResponse = ApiResponse<TimeSlot[]>;
 type ListTimeSlotsByMonthResponse = ApiResponse<TimeSlot[]>;
+type ListTimeSlotsByDoctorIdResponse = ApiResponse<TimeSlot[]>;
 
 // Drug
 type GetDrugByIdResponse = ApiResponse<Drug>;
 type ListDrugsResponse = ApiResponse<Drug[]>;
+
+//Service
+type ListServicesResponse = ApiResponse<Service[]>;
 
 export type {
   GetPatientResponse,
@@ -53,4 +58,6 @@ export type {
   ListTimeSlotsByMonthResponse,
   GetDrugByIdResponse,
   ListDrugsResponse,
+  ListServicesResponse,
+  ListTimeSlotsByDoctorIdResponse,
 };

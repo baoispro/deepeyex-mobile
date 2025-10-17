@@ -1,6 +1,7 @@
-import { configureStore } from "@reduxjs/toolkit";
-import authReducer from "./authSlice";
-import { useDispatch, useSelector, TypedUseSelectorHook } from "react-redux";
+import { configureStore } from '@reduxjs/toolkit';
+import authReducer from './authSlice';
+import cartReducer from './cartSlice';
+import { useDispatch, useSelector, TypedUseSelectorHook } from 'react-redux';
 import {
   FLUSH,
   PAUSE,
@@ -10,21 +11,28 @@ import {
   PURGE,
   REGISTER,
   REHYDRATE,
-} from "redux-persist";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+} from 'redux-persist';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const persistConfig = {
-  key: "root",
+const authPersistConfig = {
+  key: 'auth',
   storage: AsyncStorage,
 };
 
-const persistedReducer = persistReducer(persistConfig, authReducer);
+const cartPersistConfig = {
+  key: 'cart',
+  storage: AsyncStorage,
+};
+
+const persistedAuthReducer = persistReducer(authPersistConfig, authReducer);
+const persistedCartReducer = persistReducer(cartPersistConfig, cartReducer);
 
 export const store = configureStore({
   reducer: {
-    auth: persistedReducer,
+    auth: persistedAuthReducer,
+    cart: persistedCartReducer,
   },
-  middleware: (getDefaultMiddleware) =>
+  middleware: getDefaultMiddleware =>
     getDefaultMiddleware({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
