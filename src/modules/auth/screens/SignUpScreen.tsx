@@ -11,6 +11,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useRegisterMutation } from '../hooks/mutations/use-register.mutation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { auth } from '../../../shared/configs/firebase';
+import { FirebaseAuthTypes } from '@react-native-firebase/auth';
 
 interface SignUpScreenProps {
   navigation: any;
@@ -75,10 +77,15 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
   const handleSignUp = async () => {
     if (!validateForm()) return;
     setLoading(true);
-    let firebaseUser = 'ABCSxyaxzacsavad';
+    let firebaseUser: FirebaseAuthTypes.User | null = null;
 
     try {
       // 2️⃣ Gọi API backend để lưu user
+      const userCredential = await auth().createUserWithEmailAndPassword(
+        email,
+        password,
+      );
+      const firebaseUser = userCredential.user.uid;
       await registerMutation.mutateAsync({
         username,
         email,
@@ -103,9 +110,9 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
       }
       if (firebaseUser) {
         try {
-          // await deleteUser(firebaseUser);
+          await firebaseUser.delete();
         } catch (delError) {
-          console.error('Failed to delete Firebase user:', delError);
+          console.error("Failed to delete Firebase user:", delError);
         }
       }
     } finally {
