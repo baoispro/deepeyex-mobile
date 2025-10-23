@@ -17,6 +17,7 @@ import ProfileInfoScreen from '../modules/profile/screens/ProfileInfoScreen';
 import SettingsScreen from '../modules/profile/screens/SettingsScreen';
 import CartScreen from '../modules/hospital/screens/CartScreen';
 import CheckoutScreen from '../modules/hospital/screens/CheckoutScreen';
+import { ChatBox } from '../modules/home/screens/ChatBotScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -47,6 +48,7 @@ const AppNavigator = () => {
           options={{ headerShown: false }}
         />
         <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="chat" component={ChatBox} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="ProfileInfo" component={ProfileInfoScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />

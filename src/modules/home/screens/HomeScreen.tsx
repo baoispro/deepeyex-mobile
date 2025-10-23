@@ -283,7 +283,10 @@ const HomeScreen = () => {
 
         <TouchableOpacity
           style={styles.bottomNavItem}
-          onPress={() => setActiveBottomTab('chat')}
+          onPress={() => {
+            setActiveBottomTab('chat');
+            navigation.navigate('chat');
+          }}
         >
           <Ionicons
             name="chatbubble" // hoặc "chatbubble-outline"

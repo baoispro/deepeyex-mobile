@@ -1,5 +1,11 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Keyboard,
+} from 'react-native';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useNavigation } from '@react-navigation/native';
 
@@ -13,33 +19,32 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({
   onTabChange,
 }) => {
   const navigation = useNavigation();
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () =>
+      setKeyboardVisible(true),
+    );
+    const hideSub = Keyboard.addListener('keyboardDidHide', () =>
+      setKeyboardVisible(false),
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const handleTabPress = (tab: string, screenName: string) => {
-    if (onTabChange) {
-      onTabChange(tab);
-    }
+    if (onTabChange) onTabChange(tab);
     (navigation as any).navigate(screenName);
   };
 
+  if (isKeyboardVisible) return null; // 👈 Ẩn khi bàn phím bật
+
   const bottomNavItems = [
-    {
-      id: 'home',
-      label: 'Trang chủ',
-      icon: 'home',
-      screenName: 'Home',
-    },
-    {
-      id: 'chat',
-      label: 'Trò chuyện',
-      icon: 'chatbubble',
-      screenName: 'Chat', // Có thể thay đổi tên screen khi có
-    },
-    {
-      id: 'profile',
-      label: 'Cá nhân',
-      icon: 'person',
-      screenName: 'Profile',
-    },
+    { id: 'home', label: 'Trang chủ', icon: 'home', screenName: 'Home' },
+    { id: 'chat', label: 'Trò chuyện', icon: 'chatbubble', screenName: 'chat' },
+    { id: 'profile', label: 'Cá nhân', icon: 'person', screenName: 'Profile' },
     {
       id: 'calendar',
       label: 'Đặt khám',

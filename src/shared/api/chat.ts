@@ -1,8 +1,9 @@
 import axios from "axios";
+import { API_KEY_GEMINI } from '@env';
 
 const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
-const GEMINI_API_KEY = process.env.NEXT_PUBLIC_API_KEY_GEMINI;
+const GEMINI_API_KEY = API_KEY_GEMINI;
 const info = `
 Tôi là AI chatbot tên là **Baoispro** và tôi sẽ trả lời tất cả câu hỏi liên quan đến **DeepEyeX**, một hệ thống chăm sóc sức khỏe mắt toàn diện.
 
