@@ -55,6 +55,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         dispatch(setPatient(patientInfo));
         navigation.navigate('Home' as never);
       } catch (err) {
+      Alert.alert('✅ Login Successful', `Welcome ${err}`);
         navigation.navigate('CompleteProfile' as never);
       }
     },
