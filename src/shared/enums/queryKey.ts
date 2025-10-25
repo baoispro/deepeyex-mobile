@@ -7,4 +7,9 @@ export enum QueryKeyEnum {
   TimeSlot = 'timeSlot',
   Drug = 'drugs',
   Service = 'services',
+  Order = 'orders',
+  Appointment = 'appointments',
+  MedicalRecords = 'medical_records',
+  Prescription = 'prescriptions',
+  Notification = 'notifications',
 }

@@ -16,6 +16,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../../shared/stores';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '../../../shared/hooks/useCart';
+import NotificationPopover from '../components/NotificationPopover';
 
 const { width } = Dimensions.get('window');
 
@@ -213,9 +214,7 @@ const HomeScreen = () => {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.headerIcon}>
-              <Ionicons name="notifications-outline" size={24} color="#000" />
-            </TouchableOpacity>
+            <NotificationPopover />
 
             <TouchableOpacity style={styles.headerIcon}>
               <Ionicons name="settings-outline" size={24} color="#000" />

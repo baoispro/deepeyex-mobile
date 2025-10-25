@@ -17,6 +17,7 @@ type AuthState = {
   userId: string | null;
   role: string | null;
   patient: PatientInfo | null;
+  socketConnected?: boolean;
 };
 
 const initialState: AuthState = {
@@ -48,15 +49,19 @@ const authSlice = createSlice({
     setPatient: (state, action: PayloadAction<PatientInfo>) => {
       state.patient = action.payload;
     },
+    setSocketConnected: (state, action: PayloadAction<boolean>) => {
+      state.socketConnected = action.payload;
+    },
     clearTokens: state => {
       state.accessToken = null;
       state.refreshToken = null;
       state.userId = null;
       state.role = null;
       state.patient = null;
+      state.socketConnected = false;
     },
   },
 });
 
-export const { setTokens, setPatient, clearTokens } = authSlice.actions;
+export const { setTokens, setPatient, clearTokens, setSocketConnected } = authSlice.actions;
 export default authSlice.reducer;

@@ -15,6 +15,7 @@ import { useLoginMutation } from '../hooks/mutations/use-login.mutation';
 import { PatientApi } from '../../hospital/apis/patient/patientApi';
 import { useDispatch } from 'react-redux';
 import { setPatient } from '../../../shared/stores/authSlice';
+import { initPatientSocket } from '../../../shared/configs/socket';
 
 interface LoginScreenProps {
   navigation: any;
@@ -53,6 +54,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           image: patient.data?.image ?? null,
         };
         dispatch(setPatient(patientInfo));
+        initPatientSocket(patient.data?.patient_id || "");
         navigation.navigate('Home' as never);
       } catch (err) {
       Alert.alert('✅ Login Successful', `Welcome ${err}`);
