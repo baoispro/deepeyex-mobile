@@ -6,6 +6,7 @@ import { Drug } from './drug';
 import { ApiResponse } from '../../../shared/types/response';
 import { Service } from './service';
 import { Upload } from './upload';
+import { Appointment } from './appointment';
 
 type GetPatientResponse = ApiResponse<Patient>;
 
@@ -42,6 +43,12 @@ type ListServicesResponse = ApiResponse<Service[]>;
 //Upload
 type UploadFileResponse = ApiResponse<Upload>;
 
+// Appointment
+type ListAppointmentsResponse = ApiResponse<Appointment[]>;
+type UpdateAppointmentStatusResponse = ApiResponse<Appointment>;
+type CreateFollowUpResponse = ApiResponse<Appointment>;
+type CancelAppointmentResponse = ApiResponse<null>;
+
 export type {
   GetPatientResponse,
   CreateHospitalResponse,
@@ -65,4 +72,8 @@ export type {
   ListServicesResponse,
   ListTimeSlotsByDoctorIdResponse,
   UploadFileResponse,
+  ListAppointmentsResponse,
+  UpdateAppointmentStatusResponse,
+  CreateFollowUpResponse,
+  CancelAppointmentResponse
 };

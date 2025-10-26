@@ -16,6 +16,8 @@ import { PatientApi } from '../../hospital/apis/patient/patientApi';
 import { useDispatch } from 'react-redux';
 import { setPatient } from '../../../shared/stores/authSlice';
 import { initPatientSocket } from '../../../shared/configs/socket';
+import { CallApi } from '../../hospital/apis/call/callApi';
+import { connectToStringee } from '../../../shared/utils/stringee';
 
 interface LoginScreenProps {
   navigation: any;
@@ -54,10 +56,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           image: patient.data?.image ?? null,
         };
         dispatch(setPatient(patientInfo));
-        initPatientSocket(patient.data?.patient_id || "");
+        const res = await CallApi.getStringeeToken(data.data?.user_id || '');
+        const stringeeToken = res.data.token;
+        connectToStringee(stringeeToken);
+        initPatientSocket(patient.data?.patient_id || '');
         navigation.navigate('Home' as never);
       } catch (err) {
-      Alert.alert('✅ Login Successful', `Welcome ${err}`);
+        Alert.alert('✅ Login Successful', `Welcome ${err}`);
         navigation.navigate('CompleteProfile' as never);
       }
     },

@@ -17,6 +17,9 @@ import ChatBox from '../components/ChatBox';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useNavigation } from '@react-navigation/native';
+import VideoCall from '../components/ChatHeader';
+import { useGetAppointmentsOnline } from '../../hospital/hooks/queries/appointment/use-get-appointments-online';
+import { RootState } from '../../../shared/stores';
 
 interface Conversation {
   id: string;
@@ -48,7 +51,7 @@ export default function Consultation() {
   const [activeTab, setActiveTab] = useState<'online' | 'history'>('online');
   const [showInfo, setShowInfo] = useState(false);
 
-  const auth = useSelector((state: any) => state.auth);
+  const auth = useSelector((state: RootState) => state.auth);
   const patient_id = auth.patient?.patientId;
 
   // 🔥 Lấy danh sách hội thoại từ Firestore
@@ -82,6 +85,10 @@ export default function Consultation() {
     setSelectedChat(item);
     setShowInfo(false);
   };
+
+  const { data, isLoading, isError } = useGetAppointmentsOnline({
+    book_user_id: auth.userId || '',
+  });
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -117,21 +124,66 @@ export default function Consultation() {
 
         {/* Nội dung tab */}
         {activeTab === 'online' ? (
-          <ScrollView contentContainerStyle={styles.content}>
-            <Card style={styles.card}>
-              <Card.Title title="Phòng tư vấn trực tuyến" />
-              <Card.Content>
-                <Text style={styles.grayText}>
-                  Hiện chưa có API danh sách lịch tư vấn online trong bản RN
-                </Text>
-                <Button
-                  mode="contained"
-                  onPress={() => Alert.alert('Chức năng demo')}
+          <ScrollView style={styles.content}>
+            <Text style={styles.sectionTitle}>Phòng tư vấn trực tuyến</Text>
+
+            {isLoading ? (
+              <ActivityIndicator size="large" color="#007AFF" />
+            ) : isError || !data?.data?.length ? (
+              <Text style={styles.grayText}>
+                Không có lịch tư vấn trực tuyến nào.
+              </Text>
+            ) : (
+              data.data.map((appointment: any) => (
+                <View
+                  key={appointment.appointment_id}
+                  style={styles.appointmentCard}
                 >
-                  Kiểm tra micro
-                </Button>
-              </Card.Content>
-            </Card>
+                  <View style={styles.row}>
+                    <Avatar.Image
+                      size={50}
+                      source={{
+                        uri:
+                          appointment.doctor.image ||
+                          `https://api.dicebear.com/7.x/initials/svg?seed=${appointment.doctor.full_name}`,
+                      }}
+                    />
+                    <View style={{ marginLeft: 10, flex: 1 }}>
+                      <Text style={styles.doctorName}>
+                        {appointment.doctor.full_name}
+                      </Text>
+                      <Text style={styles.timeText}>
+                        {new Date(
+                          appointment.time_slots[0].start_time,
+                        ).toLocaleString()}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.statusBadge,
+                          appointment.status === 'CONFIRMED_ONLINE'
+                            ? styles.statusConfirmed
+                            : appointment.status === 'PENDING_ONLINE'
+                            ? styles.statusPending
+                            : styles.statusDone,
+                        ]}
+                      >
+                        {appointment.status === 'PENDING_ONLINE'
+                          ? 'Đang chờ'
+                          : appointment.status === 'CONFIRMED_ONLINE'
+                          ? 'Đã xác nhận'
+                          : 'Hoàn tất'}
+                      </Text>
+                    </View>
+                  </View>
+                  <VideoCall
+                    userId={auth?.userId ?? ''}
+                    userSenderId={
+                      appointment.doctor.user_id || 'doctor_default'
+                    }
+                  />
+                </View>
+              ))
+            )}
           </ScrollView>
         ) : (
           <View style={styles.historyContainer}>
@@ -399,4 +451,43 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     backgroundColor: '#fff',
   },
+  onlineContainer: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#f8f9fa',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#007AFF',
+    marginBottom: 12,
+  },
+  appointmentCard: {
+    backgroundColor: '#fff',
+    padding: 16,
+    marginBottom: 12,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  doctorName: { fontSize: 16, fontWeight: '600', color: '#333' },
+  timeText: { color: '#555', marginVertical: 2 },
+  statusBadge: {
+    marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    fontSize: 12,
+    fontWeight: '500',
+    alignSelf: 'flex-start',
+  },
+  statusPending: { backgroundColor: '#fff3cd', color: '#856404' },
+  statusConfirmed: { backgroundColor: '#d1ecf1', color: '#0c5460' },
+  statusDone: { backgroundColor: '#d4edda', color: '#155724' },
 });
