@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { QueryKeyEnum } from "../../../../../shared/enums/queryKey";
-import { AppointmentApi } from "../../../apis/appointment/appointmentApi";
+import { useQuery } from '@tanstack/react-query';
+import { QueryKeyEnum } from '../../../../../shared/enums/queryKey';
+import { AppointmentApi } from '../../../apis/appointment/appointmentApi';
 
 interface AppointmentFilters {
   status?: string;
@@ -14,7 +14,8 @@ export const useGetAppointmentsByPatientId = (
 ) => {
   return useQuery({
     queryKey: [QueryKeyEnum.Appointment, patientId, filters],
-    queryFn: () => AppointmentApi.getAppointmentsByPatientId(patientId!, filters),
+    queryFn: () =>
+      AppointmentApi.getAppointmentsByPatientId(patientId!, filters),
     enabled: !!patientId,
   });
 };
