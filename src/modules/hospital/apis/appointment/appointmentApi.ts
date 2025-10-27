@@ -1,11 +1,11 @@
-import { AxiosInstance } from "axios";
+import { AxiosInstance } from 'axios';
 import {
   CancelAppointmentResponse,
   CreateFollowUpResponse,
   ListAppointmentsResponse,
   UpdateAppointmentStatusResponse,
-} from "../../types/response";
-import api from "../../../../shared/configs/axios";
+} from '../../types/response';
+import api from '../../../../shared/configs/axios';
 
 export interface CreateFollowUpRequest {
   patient_id: string;
@@ -69,7 +69,9 @@ class AppointmentClient {
     return response.data;
   }
 
-  async createFollowUpAppointment(payload: CreateFollowUpRequest): Promise<CreateFollowUpResponse> {
+  async createFollowUpAppointment(
+    payload: CreateFollowUpRequest,
+  ): Promise<CreateFollowUpResponse> {
     const response = await this.client.post<CreateFollowUpResponse>(
       `/hospital/appointments/follow-up`,
       payload,
@@ -77,7 +79,9 @@ class AppointmentClient {
     return response.data;
   }
 
-  async cancelAppointment(appointmentId: string): Promise<CancelAppointmentResponse> {
+  async cancelAppointment(
+    appointmentId: string,
+  ): Promise<CancelAppointmentResponse> {
     const response = await this.client.put<CancelAppointmentResponse>(
       `/hospital/appointments/${appointmentId}/cancel`,
     );

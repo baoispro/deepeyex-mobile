@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ScrollView,
   View,
@@ -8,6 +8,7 @@ import {
   Dimensions,
   StatusBar,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 
 import { Ionicons } from '@react-native-vector-icons/ionicons';
@@ -17,28 +18,156 @@ import { RootState } from '../../../shared/stores';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '../../../shared/hooks/useCart';
 import NotificationPopover from '../components/NotificationPopover';
+import { Appointment } from '../../hospital/types/appointment';
+import { useGetAppointmentsByPatientId } from '../../hospital/hooks/queries/appointment/use-get-appointments.query';
 
 const { width } = Dimensions.get('window');
 
-// Dữ liệu mẫu cho các ngày trong tuần
-const weekDays = [
-  { day: 9, weekday: 'MON' },
-  { day: 10, weekday: 'TUE' },
-  { day: 11, weekday: 'WED' }, // Ngày hiện tại
-  { day: 12, weekday: 'THU' },
-  { day: 13, weekday: 'FRI' },
-  { day: 14, weekday: 'SAT' },
-];
+// Helper: Tạo danh sách 14 ngày từ hôm nay
+const generateWeekDays = () => {
+  const days = [];
+  const today = new Date();
+  const weekdayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+  for (let i = 0; i < 14; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    days.push({
+      date: date,
+      day: date.getDate(),
+      weekday: weekdayNames[date.getDay()],
+      fullDate: date.toISOString().split('T')[0], // YYYY-MM-DD
+    });
+  }
+  return days;
+};
+
+// Helper: Format thời gian từ ISO string
+const formatTime = (isoString: string) => {
+  const date = new Date(isoString);
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 || 12;
+  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+};
+
+// Helper: Format date header
+const formatDateHeader = (date: Date) => {
+  const weekdayNames = [
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+  ];
+  const today = new Date();
+  const isToday = date.toDateString() === today.toDateString();
+
+  return `${date.getDate()} ${weekdayNames[date.getDay()]}${
+    isToday ? ' - Today' : ''
+  }`;
+};
 
 // Component riêng cho phần Lịch
 const CalendarSection = () => {
-  const [selectedDateIndex, setSelectedDateIndex] = useState(2);
+  const [selectedDateIndex, setSelectedDateIndex] = useState(0);
+  const { patient } = useSelector((state: RootState) => state.auth);
 
-  const appointmentDetails = {
-    date: '11 Wednesday - Today',
-    doctor: 'Dr. Olivia Turner, M.D.',
-    description: 'Treatment and prevention of skin and photodermatitis.',
-  };
+  // Fetch appointments
+  const {
+    data: appointmentsData,
+    isLoading,
+    isError,
+  } = useGetAppointmentsByPatientId(patient?.patientId || '');
+
+  const weekDays = useMemo(() => {
+    const days = generateWeekDays();
+
+    return days;
+  }, []);
+
+  // Group appointments by date
+  const appointmentsByDate = useMemo(() => {
+    if (!appointmentsData?.data) return {};
+
+    const grouped: Record<string, Appointment[]> = {};
+
+    appointmentsData.data.forEach(appointment => {
+      if (
+        appointment.time_slots &&
+        appointment.time_slots.length > 0 &&
+        appointment.status !== 'CANCELLED'
+      ) {
+        const slot = appointment.time_slots[0];
+        const appointmentDate = new Date(slot.start_time)
+          .toISOString()
+          .split('T')[0];
+        console.log(
+          '📝 Processing appointment:',
+          appointment.appointment_code,
+          'Date:',
+          appointmentDate,
+        );
+        if (!grouped[appointmentDate]) {
+          grouped[appointmentDate] = [];
+        }
+        grouped[appointmentDate].push(appointment);
+      } else {
+        console.log(
+          '⚠️ Skipped appointment:',
+          appointment.appointment_code,
+          'reason: no time_slots or cancelled',
+        );
+      }
+    });
+
+    return grouped;
+  }, [appointmentsData]);
+
+  const selectedDate = weekDays[selectedDateIndex];
+
+  // Sort appointments by time
+  const sortedAppointments = useMemo(() => {
+    const selectedAppointments =
+      appointmentsByDate[selectedDate.fullDate] || [];
+
+    return [...selectedAppointments].sort((a, b) => {
+      const timeA = new Date(a.time_slots[0].start_time).getTime();
+      const timeB = new Date(b.time_slots[0].start_time).getTime();
+      return timeA - timeB;
+    });
+  }, [appointmentsByDate, selectedDate.fullDate]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.calendarContainer}>
+        <ActivityIndicator size="large" color="#3b5998" />
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={styles.calendarContainer}>
+        <Text style={styles.errorText}>
+          Không thể tải lịch hẹn. Vui lòng thử lại.
+        </Text>
+      </View>
+    );
+  }
+
+  if (!patient?.patientId) {
+    return (
+      <View style={styles.calendarContainer}>
+        <Text style={styles.errorText}>
+          Vui lòng đăng nhập để xem lịch hẹn.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.calendarContainer}>
@@ -48,75 +177,101 @@ const CalendarSection = () => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.datePickerScroll}
       >
-        {weekDays.map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[
-              styles.dateItem,
-              index === selectedDateIndex && styles.dateItemActive,
-            ]}
-            onPress={() => setSelectedDateIndex(index)}
-          >
-            <Text
+        {weekDays.map((item, index) => {
+          const hasAppointments = !!appointmentsByDate[item.fullDate];
+          return (
+            <TouchableOpacity
+              key={index}
               style={[
-                styles.dateDay,
-                index === selectedDateIndex && styles.dateDayActive,
+                styles.dateItem,
+                index === selectedDateIndex && styles.dateItemActive,
               ]}
+              onPress={() => setSelectedDateIndex(index)}
             >
-              {item.day}
-            </Text>
-            <Text
-              style={[
-                styles.dateWeekday,
-                index === selectedDateIndex && styles.dateWeekdayActive,
-              ]}
-            >
-              {item.weekday}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text
+                style={[
+                  styles.dateDay,
+                  index === selectedDateIndex && styles.dateDayActive,
+                ]}
+              >
+                {item.day}
+              </Text>
+              <Text
+                style={[
+                  styles.dateWeekday,
+                  index === selectedDateIndex && styles.dateWeekdayActive,
+                ]}
+              >
+                {item.weekday}
+              </Text>
+              {hasAppointments && <View style={styles.appointmentDot} />}
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
-      {/* Appointment Detail Card */}
-      {selectedDateIndex === 2 && (
+      {/* Appointment Timeline */}
+      {sortedAppointments.length > 0 ? (
         <View style={styles.appointmentTimeLine}>
           <Text style={styles.appointmentHeader}>
-            {appointmentDetails.date}
+            {formatDateHeader(selectedDate.date)}
           </Text>
 
-          {/* Timeline slots */}
-          <View style={styles.timeSlot}>
-            <Text style={styles.timeText}>9 AM</Text>
-            <View style={styles.timeLine} />
-          </View>
+          {sortedAppointments.map(appointment => {
+            const slot = appointment.time_slots[0];
+            const startTime = formatTime(slot.start_time);
+            const doctorName = slot.doctor?.full_name || 'Bác sĩ';
+            const serviceName = appointment.service_name || 'Khám bệnh';
 
-          <View style={styles.timeSlotActive}>
-            <Text style={styles.timeTextActive}>10 AM</Text>
-            <View style={styles.timeLineActive}>
-              <View style={styles.appointmentCard}>
-                <View>
-                  <Text style={styles.appointmentDoctor}>
-                    {appointmentDetails.doctor}
-                  </Text>
-                  <Text style={styles.appointmentDescription}>
-                    {appointmentDetails.description}
-                  </Text>
+            return (
+              <View
+                key={appointment.appointment_id}
+                style={styles.timeSlotActive}
+              >
+                <Text style={styles.timeTextActive}>{startTime}</Text>
+                <View style={styles.timeLineActive}>
+                  <View style={styles.appointmentCard}>
+                    <View style={styles.appointmentCardContent}>
+                      <Text style={styles.appointmentDoctor}>{doctorName}</Text>
+                      <Text style={styles.appointmentDescription}>
+                        {serviceName}
+                      </Text>
+                      {appointment.notes && (
+                        <Text style={styles.appointmentNotes}>
+                          {appointment.notes}
+                        </Text>
+                      )}
+                    </View>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        appointment.status === 'COMPLETED' &&
+                          styles.statusCompleted,
+                        appointment.status === 'PENDING' &&
+                          styles.statusPending,
+                        appointment.status === 'CONFIRMED' &&
+                          styles.statusConfirmed,
+                      ]}
+                    >
+                      <Text style={styles.statusText}>
+                        {appointment.status === 'COMPLETED'
+                          ? '✓'
+                          : appointment.status === 'PENDING'
+                          ? '⏱'
+                          : '✓'}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-                <TouchableOpacity style={styles.checkIcon}>
-                  <Text style={{ fontSize: 18, color: '#fff' }}>✓</Text>
-                </TouchableOpacity>
               </View>
-            </View>
-          </View>
-
-          <View style={styles.timeSlot}>
-            <Text style={styles.timeText}>11 AM</Text>
-            <View style={styles.timeLine} />
-          </View>
-          <View style={styles.timeSlot}>
-            <Text style={styles.timeText}>12 AM</Text>
-            <View style={styles.timeLine} />
-          </View>
+            );
+          })}
+        </View>
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>
+            Không có lịch hẹn nào trong ngày này
+          </Text>
         </View>
       )}
     </View>
@@ -139,25 +294,25 @@ const HomeScreen = () => {
       name: 'AI Chẩn đoán',
       icon: '👁️',
       color: '#80a6feff',
-      onPress: () => navigation.navigate('EyeDiagnosis'),
+      onPress: () => navigation.navigate('EyeDiagnosis' as never),
     }, // Chẩn đoán bệnh mắt
     {
       name: 'Tư vấn Bác sĩ',
       icon: '👨‍⚕️',
       color: '#80a6feff',
-      onPress: () => navigation.navigate('Consultant'),
+      onPress: () => navigation.navigate('Consultant' as never),
     }, // Tư vấn trực tiếp online
     {
       name: 'Đặt khám',
       icon: '📅',
       color: '#80a6feff',
-      onPress: () => navigation.navigate('BookAppointment'),
+      onPress: () => navigation.navigate('BookAppointment' as never),
     },
     {
       name: 'Thuốc',
       icon: '💊',
       color: '#80a6feff',
-      onPress: () => navigation.navigate('MedicineList'),
+      onPress: () => navigation.navigate('MedicineList' as never),
     },
   ];
 
@@ -166,17 +321,19 @@ const HomeScreen = () => {
       {/* Đã thay thế `StatusBar` từ Expo bằng `StatusBar` của React Native */}
       <StatusBar barStyle="dark-content" backgroundColor="#f9f9f9" />
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* HEADER */}
         <View style={styles.headerContainer}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={styles.headerLeft}>
             {isLoggedIn && patient?.image ? (
               <Image
                 source={{ uri: patient.image }}
                 style={styles.profileImage}
               />
             ) : (
-              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Login' as never)}
+              >
                 <Ionicons
                   name="person-circle-outline"
                   size={40}
@@ -185,7 +342,7 @@ const HomeScreen = () => {
               </TouchableOpacity>
             )}
 
-            <View style={{ marginLeft: 10 }}>
+            <View style={styles.userInfoContainer}>
               {isLoggedIn ? (
                 <>
                   <Text style={styles.welcomeText}>Hi., Welcome Back</Text>
@@ -194,7 +351,9 @@ const HomeScreen = () => {
                   </Text>
                 </>
               ) : (
-                <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('Login' as never)}
+                >
                   <Text style={styles.loginPrompt}>Đăng nhập ngay</Text>
                 </TouchableOpacity>
               )}
@@ -204,7 +363,7 @@ const HomeScreen = () => {
           <View style={styles.headerRight}>
             <TouchableOpacity
               style={styles.headerIcon}
-              onPress={() => navigation.navigate('Cart')}
+              onPress={() => navigation.navigate('Cart' as never)}
             >
               <Ionicons name="cart-outline" size={24} color="#000" />
               {totalItems > 0 && (
@@ -289,7 +448,7 @@ const HomeScreen = () => {
           style={styles.bottomNavItem}
           onPress={() => {
             setActiveBottomTab('chat');
-            navigation.navigate('chat');
+            navigation.navigate('chat' as never);
           }}
         >
           <Ionicons
@@ -312,7 +471,7 @@ const HomeScreen = () => {
           style={styles.bottomNavItem}
           onPress={() => {
             setActiveBottomTab('profile');
-            navigation.navigate('Profile');
+            navigation.navigate('Profile' as never);
           }}
         >
           <Ionicons
@@ -543,6 +702,69 @@ const styles = StyleSheet.create({
     backgroundColor: '#3b5998',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  statusBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#3b5998',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  appointmentDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#3b5998',
+    marginTop: 4,
+  },
+  emptyContainer: {
+    paddingVertical: 30,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#dc3545',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  appointmentCardContent: {
+    flex: 1,
+  },
+  appointmentNotes: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 3,
+    fontStyle: 'italic',
+  },
+  statusCompleted: {
+    backgroundColor: '#4CAF50',
+  },
+  statusPending: {
+    backgroundColor: '#FF9800',
+  },
+  statusConfirmed: {
+    backgroundColor: '#2196F3',
+  },
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  userInfoContainer: {
+    marginLeft: 10,
   },
 
   // Doctor Card (Ví dụ)
