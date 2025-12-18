@@ -36,10 +36,17 @@ const generateWeekDays = () => {
       date: date,
       day: date.getDate(),
       weekday: weekdayNames[date.getDay()],
-      fullDate: date.toISOString().split('T')[0], // YYYY-MM-DD
+      fullDate: getLocalDateString(date),
     });
   }
   return days;
+};
+
+const getLocalDateString = (date: Date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 };
 
 // Helper: Format thời gian từ ISO string
@@ -102,9 +109,7 @@ const CalendarSection = () => {
         appointment.status !== 'CANCELLED'
       ) {
         const slot = appointment.time_slots[0];
-        const appointmentDate = new Date(slot.start_time)
-          .toISOString()
-          .split('T')[0];
+        const appointmentDate = getLocalDateString(new Date(slot.start_time));
         console.log(
           '📝 Processing appointment:',
           appointment.appointment_code,
