@@ -3,7 +3,11 @@ import { setSocketConnected } from '../stores/authSlice';
 import { handleSocketEvent } from './eventHandler';
 import { API_BASE_URL } from '@env';
 
-const WS_BASE_URL = API_BASE_URL.replace('http', 'ws') + '/ws';
+const WS_BASE_URL =
+  (API_BASE_URL.startsWith('https')
+    ? API_BASE_URL.replace('https', 'wss')
+    : API_BASE_URL.replace('http', 'ws')
+  ) + '/ws';
 
 let socket: WebSocket | null = null;
 
